@@ -34,6 +34,16 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
 
+      - name: Check out current release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: .release-automation
+          sparse-checkout: |
+            scripts/test-ci.ps1
+            scripts/publish-gitee-release.ps1
+          sparse-checkout-cone-mode: false
+
       - name: Validate tag and project version
         shell: pwsh
         run: |
@@ -63,7 +73,14 @@ jobs:
 
       - name: Test
         shell: pwsh
-        run: ./scripts/test-ci.ps1
+        run: |
+          $script = if (Test-Path -LiteralPath './scripts/test-ci.ps1') {
+            './scripts/test-ci.ps1'
+          }
+          else {
+            './.release-automation/scripts/test-ci.ps1'
+          }
+          & $script
 
       - name: Upload test reports
         if: ${{ always() }}
@@ -137,7 +154,13 @@ jobs:
           ARCHIVE: ${{ steps.package.outputs.archive }}
           CHECKSUM: ${{ steps.package.outputs.checksum }}
         run: |
-          ./scripts/publish-gitee-release.ps1 `
+          $script = if (Test-Path -LiteralPath './scripts/publish-gitee-release.ps1') {
+            './scripts/publish-gitee-release.ps1'
+          }
+          else {
+            './.release-automation/scripts/publish-gitee-release.ps1'
+          }
+          & $script `
             -Owner 'harubilira' `
             -Repository 'liraoke' `
             -Tag $env:RELEASE_TAG `
