@@ -36,7 +36,18 @@ catch {
 }
 
 $attachmentsUri = "$apiRoot/releases/$($release.id)/attach_files"
-$existingAttachments = @(Invoke-RestMethod -Method Get -Uri $attachmentsUri -Headers $headers)
+$existingAttachments = @()
+
+# Gitee currently returns 405 for the documented attachment-list endpoint on
+# some repositories. Reuse attachment metadata embedded in the release response
+# when available, and otherwise continue with a direct upload.
+foreach ($propertyName in @('assets', 'attachments', 'attach_files')) {
+    $property = $release.PSObject.Properties[$propertyName]
+    if ($null -ne $property -and $null -ne $property.Value) {
+        $existingAttachments = @($property.Value)
+        break
+    }
+}
 
 foreach ($filePath in $Files) {
     $file = Get-Item -LiteralPath $filePath
