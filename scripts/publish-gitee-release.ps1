@@ -35,30 +35,14 @@ catch {
         } | ConvertTo-Json)
 }
 
-$attachmentsUri = "$apiRoot/releases/$($release.id)/attach_files"
-$existingAttachments = @()
-
-# Gitee currently returns 405 for the documented attachment-list endpoint on
-# some repositories. Reuse attachment metadata embedded in the release response
-# when available, and otherwise continue with a direct upload.
-foreach ($propertyName in @('assets', 'attachments', 'attach_files')) {
-    $property = $release.PSObject.Properties[$propertyName]
-    if ($null -ne $property -and $null -ne $property.Value) {
-        $existingAttachments = @($property.Value)
-        break
-    }
+if ($null -eq $release -or $null -eq $release.id) {
+    throw "Gitee did not return a valid Release object for tag $Tag."
 }
+
+$attachmentsUri = "$apiRoot/releases/$($release.id)/attach_files"
 
 foreach ($filePath in $Files) {
     $file = Get-Item -LiteralPath $filePath
-    $existing = $existingAttachments | Where-Object { $_.name -eq $file.Name }
-    foreach ($attachment in $existing) {
-        Invoke-RestMethod `
-            -Method Delete `
-            -Uri "$attachmentsUri/$($attachment.id)" `
-            -Headers $headers | Out-Null
-    }
-
     Invoke-RestMethod `
         -Method Post `
         -Uri $attachmentsUri `
