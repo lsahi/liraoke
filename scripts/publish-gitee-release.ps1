@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $apiRoot = "https://gitee.com/api/v5/repos/$Owner/$Repository"
 $headers = @{ Authorization = "Bearer $AccessToken" }
+$release = $null
 
 try {
     $release = Invoke-RestMethod `
@@ -18,8 +19,11 @@ try {
         -Headers $headers
 }
 catch {
-    if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
+    $statusCode = [int]$_.Exception.Response.StatusCode
+    if ($statusCode -ne 404) { throw }
+}
 
+if ($null -eq $release -or $null -eq $release.id) {
     $isPrerelease = $Tag.Contains('-')
     $release = Invoke-RestMethod `
         -Method Post `
@@ -36,13 +40,27 @@ catch {
 }
 
 if ($null -eq $release -or $null -eq $release.id) {
-    throw "Gitee did not return a valid Release object for tag $Tag."
+    throw "Gitee did not return a valid Release object after creating tag $Tag."
 }
 
 $attachmentsUri = "$apiRoot/releases/$($release.id)/attach_files"
+$existingAttachments = @(
+    Invoke-RestMethod `
+        -Method Get `
+        -Uri "${attachmentsUri}?page=1&per_page=100&direction=asc" `
+        -Headers $headers
+)
 
 foreach ($filePath in $Files) {
     $file = Get-Item -LiteralPath $filePath
+    $existing = $existingAttachments | Where-Object { $_.name -eq $file.Name }
+    foreach ($attachment in $existing) {
+        Invoke-RestMethod `
+            -Method Delete `
+            -Uri "$attachmentsUri/$($attachment.id)" `
+            -Headers $headers | Out-Null
+    }
+
     Invoke-RestMethod `
         -Method Post `
         -Uri $attachmentsUri `
