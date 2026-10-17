@@ -1,0 +1,588 @@
+<Window x:Class="KaraokeFilmMaker.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:KaraokeFilmMaker.App.Controls"
+        xmlns:local="clr-namespace:KaraokeFilmMaker.App"
+        Title="{x:Static local:AppBrand.DisplayName}" Icon="/Liraoke;component/Assets/Liraoke.ico"
+        Height="940" Width="1440" MinHeight="760" MinWidth="1100"
+        WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" FontSize="13" Foreground="#34424D"
+        Background="#FAFCFD" UseLayoutRounding="True"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Closing="Window_Closing"
+        Closed="Window_Closed">
+    <Grid Background="#FAFCFD">
+    <Grid.Resources>
+      <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="Themes/LightTheme.xaml" />
+        </ResourceDictionary.MergedDictionaries>
+        <controls:ThumbnailImageConverter x:Key="ThumbnailImageConverter" />
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#687782" /><Setter Property="Padding" Value="20,11" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
+                <Border x:Name="TabChrome" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,3" CornerRadius="6,6,0,0" Padding="{TemplateBinding Padding}" Margin="0,0,6,0">
+                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabChrome" Property="Background" Value="#F2FAFD" /></Trigger>
+                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabChrome" Property="Background" Value="White" /><Setter TargetName="TabChrome" Property="BorderBrush" Value="#8DC5D7" /><Setter Property="Foreground" Value="#2E5669" /><Setter Property="FontWeight" Value="SemiBold" /></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+      </ResourceDictionary>
+    </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition x:Name="TimelineRow" Height="280" MinHeight="180" />
+        </Grid.RowDefinitions>
+
+        <Border Padding="16,10" Background="#FFFFFF" BorderBrush="#EFE8D4" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="True">
+                <WrapPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,8,0,0">
+                    <Button Padding="12,7" Margin="4,2" Click="UndoProjectButton_Click" Content="撤销" />
+                    <Button x:Name="RestartRecordingButton" Padding="12,7" Margin="4,2" Click="RestartRecording_Click" Content="重新打轴" ToolTip="确认后清空整首歌词时间点，保留歌词文字与读音修改。" />
+                    <Button x:Name="NewWorkspaceButton" Padding="12,7" Margin="4,2"
+                            Click="NewWorkspaceButton_Click" Content="新建工作区" />
+                    <Button x:Name="OpenWorkspaceButton" Padding="12,7" Margin="4,2"
+                            Click="OpenWorkspaceButton_Click" Content="打开工作区" />
+                    <Button x:Name="SaveWorkspaceButton" Padding="12,7" Margin="4,2"
+                            Click="SaveWorkspaceButton_Click" Content="保存" IsEnabled="False" />
+                    <Button x:Name="OpenAudioButton" Visibility="Collapsed" Padding="12,7" Margin="4,2"
+                            Click="OpenAudioButton_Click" Content="导入歌曲" IsEnabled="False" />
+                    <Button x:Name="ImportVideoButton" Visibility="Collapsed" Padding="12,7" Margin="4,2"
+                            Click="ImportVideoButton_Click" Content="导入视频" IsEnabled="False" />
+                    <Button x:Name="ExportButton" Padding="12,7" Margin="4,2" Click="ExportButton_Click" Content="导出 MP4" IsEnabled="False" />
+                    <Button x:Name="CancelOperationButton" Padding="12,7" Margin="4,2" Click="CancelOperationButton_Click" Content="取消任务" IsEnabled="False" />
+                    <Button x:Name="RecoveryButton" Padding="12,7" Margin="4,2" Click="RecoveryButton_Click" Content="恢复未保存编辑" Visibility="Collapsed" />
+                </WrapPanel>
+                <DockPanel>
+                    <Image Width="36" Height="36" DockPanel.Dock="Left" Margin="0,0,10,0"
+                           RenderOptions.BitmapScalingMode="HighQuality" ToolTip="莉拉OK! / Liraoke">
+                        <Image.Source><BitmapImage UriSource="/Liraoke;component/Assets/Liraoke.source.png" DecodePixelWidth="144" /></Image.Source>
+                    </Image>
+                <StackPanel>
+                    <TextBlock x:Name="ProjectTitleText" FontSize="16" FontWeight="SemiBold"
+                               Foreground="#34424D" Text="{x:Static local:AppBrand.DisplayName}" />
+                    <TextBlock x:Name="SourceText" Margin="0,4,12,0" Foreground="#687782"
+                               Text="请先新建或打开工作区" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                </DockPanel>
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="EditorTabs" Grid.Row="1" Margin="12,8" Background="#FAFCFD" BorderThickness="0" SelectionChanged="EditorTabs_SelectionChanged">
+          <TabItem x:Name="PreviewTab" Header="预览">
+           <Grid Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="245" />
+            </Grid.ColumnDefinitions>
+            <Border Background="#FFFFFF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="项目素材" Foreground="#34424D" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <WrapPanel><Button Click="OpenAudioButton_Click" Content="+ 歌曲" Margin="0,0,6,6" /><Button Click="ImportVideoButton_Click" Content="+ 视频" Margin="0,0,6,6" /><Button x:Name="ImportImageButton" Click="ImportImageButton_Click" Content="+ 图片" Margin="0,0,0,6" /></WrapPanel>
+                        <TextBlock Text="双击视频 / 图片加入时间轴" Foreground="#687782" FontSize="11" Margin="0,0,0,8" />
+                    </StackPanel>
+                    <Button DockPanel.Dock="Bottom" Click="RemoveMediaAsset_Click" Content="移除选中素材" Margin="0,8,0,0" ToolTip="从项目中移除素材；正在使用的素材会先提示确认" />
+                    <ListBox x:Name="MediaLibraryList" Background="#FFFFFF" Foreground="#34424D" BorderThickness="0" MouseDoubleClick="MediaLibraryList_MouseDoubleClick">
+                        <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4,7">
+                            <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailImageConverter}}" Height="60" Stretch="Uniform">
+                                <Image.Style><Style TargetType="Image"><Style.Triggers>
+                                    <DataTrigger Binding="{Binding ThumbnailPath}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                </Style.Triggers></Style></Image.Style>
+                            </Image>
+                            <DockPanel Margin="0,4,0,0">
+                                <controls:MediaKindIcon Kind="{Binding Kind}" Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Top" />
+                                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding Details}" Foreground="#687782" FontSize="11" />
+                        </StackPanel></DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#FAFCFD" />
+            <Grid Grid.Column="2">
+              <ContentControl x:Name="PreviewMonitorHost">
+            <Border x:Name="SharedMonitor" Padding="0" CornerRadius="4" Background="Black" MouseLeftButtonDown="Monitor_MouseLeftButtonDown">
+                <Grid>
+                  <Viewbox Stretch="Uniform">
+                   <Grid x:Name="PreviewCanvas" Width="1920" Height="1080" Background="Black" ClipToBounds="True">
+                    <MediaElement x:Name="VideoPreview" LoadedBehavior="Manual" UnloadedBehavior="Close"
+                                  IsMuted="True" Stretch="Uniform" MediaOpened="VideoPreview_MediaOpened"
+                                  MediaFailed="VideoPreview_MediaFailed" />
+                    <Image x:Name="StillImagePreview" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False" />
+                    <controls:AudioVisualizationOverlay x:Name="AudioVisualizationPreview" IsHitTestVisible="False" Visibility="Collapsed" />
+                    <controls:SubtitleOverlay x:Name="SubtitlePreview" IsHitTestVisible="False" />
+                   </Grid>
+                  </Viewbox>
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" IsHitTestVisible="False">
+                        <TextBlock x:Name="PositionText"
+                                   Foreground="White" FontFamily="Consolas" FontSize="18"
+                                   Text="00:00.000" />
+                        <TextBlock x:Name="MonitorShortcutText" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Foreground="#C4CCD4" FontSize="12"
+                                   Text="空格：播放 / 暂停　← →：逐帧　J / K / L：后退 / 暂停 / 播放" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+              </ContentControl>
+            </Grid>
+            <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="#FAFCFD" />
+            <Border x:Name="PreviewSettingsPanel" Grid.Column="4" Background="White" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
+                <ScrollViewer x:Name="PreviewSettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <CheckBox x:Name="MetronomeEnabledCheck" DockPanel.Dock="Right" Content="开启" Click="MetronomeEnabled_Click" VerticalAlignment="Center" ToolTip="仅辅助后续新打点吸附；随时开关或调整参数，已有打点和重做记录不变。" />
+                        <TextBlock Text="节拍器" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <Button x:Name="ApplyMetronomeButton" DockPanel.Dock="Right" Content="应用" Click="ApplyMetronome_Click" Padding="12,4" />
+                        <Button x:Name="AutoInitializeMetronomeButton" Content="自动初始化" Click="AutoInitializeMetronome_Click"
+                            Background="#F2FAFD" Margin="0,0,6,0" Padding="8,4"
+                            ToolTip="离线分析歌曲的固定 BPM 和首拍偏移；生成候选后试听并点应用。" />
+                    </DockPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="÷2" Click="HalveMetronomeBpm_Click" Padding="6,3" ToolTip="BPM 减半，仅修改草稿" />
+                            <Button Content="×2" Click="DoubleMetronomeBpm_Click" Padding="6,3" Margin="3,0,0,0" ToolTip="BPM 加倍，仅修改草稿" />
+                        </StackPanel>
+                        <TextBlock Text="BPM" Foreground="#687782" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox x:Name="MetronomeBpmText" Text="120" Width="70" HorizontalAlignment="Left" Padding="5,3" TextChanged="MetronomeTuningText_Changed" />
+                    </DockPanel>
+                    <controls:MetronomeValueWheel x:Name="MetronomeBpmWheel" Minimum="20" Maximum="400" Value="120"
+                        Step="1" FineStep="0.1" Margin="0,5,0,8" ValueChanged="MetronomeTuningWheel_Changed"
+                        AutomationProperties.Name="BPM 刻度滚轮" ToolTip="左右拖动或滚动鼠标：每格 1 BPM；按住 Shift 精调 0.1 BPM。修改后点应用。" />
+                    <DockPanel>
+                        <TextBlock Text="首拍偏移（ms）" Foreground="#687782" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox x:Name="MetronomeOffsetText" Text="0" MinWidth="68" Padding="5,3" TextChanged="MetronomeTuningText_Changed"
+                            ToolTip="首拍在歌曲中的位置：正数延后首拍，负数表示首拍在歌曲开始之前。支持 -600000 至 600000 毫秒。" />
+                    </DockPanel>
+                    <controls:MetronomeValueWheel x:Name="MetronomeOffsetWheel" Minimum="-600000" Maximum="600000" Value="0"
+                        Step="10" FineStep="1" Margin="0,5,0,0" ValueChanged="MetronomeTuningWheel_Changed"
+                        AutomationProperties.Name="首拍偏移刻度滚轮" ToolTip="左右拖动或滚动鼠标：每格 10 毫秒；按住 Shift 精调 1 毫秒。修改后点应用。" />
+                    <TextBlock Text="拖动 / 滚轮调节 · Shift 精调" Foreground="#687782" FontSize="11" Margin="0,5,0,5" />
+                    <DockPanel Margin="0,4,0,5">
+                        <TextBlock Text="吸附细分" Foreground="#687782" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox x:Name="MetronomeSubdivisionCombo" SelectedIndex="0" SelectionChanged="MetronomeSubdivision_Changed"
+                                  ToolTip="每一拍等分为若干格，只影响应用后的新打点；试听仍按整拍发声。">
+                            <ComboBoxItem Content="整拍 · 每拍 1 格" Tag="1" />
+                            <ComboBoxItem Content="二分拍 · 每拍 2 格" Tag="2" />
+                            <ComboBoxItem Content="三分拍 · 每拍 3 格" Tag="3" />
+                            <ComboBoxItem Content="四分拍 · 每拍 4 格" Tag="4" />
+                            <ComboBoxItem Content="六分拍 · 每拍 6 格" Tag="6" />
+                            <ComboBoxItem Content="八分拍 · 每拍 8 格" Tag="8" />
+                        </ComboBox>
+                    </DockPanel>
+                    <controls:MetronomeBeatPreview x:Name="MetronomeBeatGuide" Height="38"
+                        ToolTip="草稿拍点示意：金色长线为整拍，蓝色短线为细分格；显示歌曲前两秒，点应用生效。" />
+                    <TextBlock x:Name="MetronomeDraftText" Text="参数已同步" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
+                    <TextBlock x:Name="MetronomeStatusText" Text="未开启 · 自由打轴" Foreground="#92701F" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0" />
+                    <TextBlock x:Name="MetronomeAnalysisText" Text="离线估算固定节奏，结果请试听确认。" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
+                    <CheckBox x:Name="AudioVisualizationCheck" Content="音频可视化" Margin="0,14,0,0" Click="AudioVisualization_Click" ToolTip="预览与导出一致，不影响打轴页。首次开启时准备本地缓存，各样式共用。" />
+                    <ComboBox x:Name="AudioVisualizationStyleCombo" Margin="0,6,0,0" SelectionChanged="AudioVisualizationStyle_Changed"
+                              AutomationProperties.Name="音频可视化样式" ToolTip="A / B 蓝黄配色；C / D / E 白色半透明柱形。选择随工作区保存。">
+                        <ComboBoxItem Content="A · 经典左下频谱" Tag="Classic" />
+                        <ComboBoxItem Content="B · 底部密集频谱" Tag="BottomDense" />
+                        <ComboBoxItem Content="C · 居中白色频谱" Tag="CenterWhite" />
+                        <ComboBoxItem Content="D · 自旋环形频谱" Tag="RotatingRing" />
+                        <ComboBoxItem Content="E · 中低频烟花" Tag="Fireworks" />
+                    </ComboBox>
+                    <TextBlock x:Name="AudioVisualizationStatusText" Text="默认关闭 · 可配合图片背景" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    <Expander Header="视频 / 图片片段" Margin="0,14,0,0" IsExpanded="False">
+                      <StackPanel Margin="0,8,0,0">
+                    <StackPanel DataContext="{Binding SelectedItem, ElementName=VideoGrid}">
+                        <TextBlock Text="{Binding Name, TargetNullValue=在时间轴上选择片段}" Foreground="#687782" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <TextBlock Text="时间轴开始（秒）" Foreground="#687782" /><TextBox Text="{Binding TimelineStartSeconds}" Padding="5,3" Margin="0,3,0,6" />
+                        <TextBlock Text="素材入点（秒，图片固定 0）" Foreground="#687782" /><TextBox Text="{Binding SourceStartSeconds}" IsEnabled="{Binding HasSourceTiming}" Padding="5,3" Margin="0,3,0,6" />
+                        <TextBlock Text="片段时长（秒）" Foreground="#687782" /><TextBox Text="{Binding DurationSeconds}" Padding="5,3" Margin="0,3,0,8" />
+                        <CheckBox Content="视频原声静音" IsChecked="{Binding IsMuted}" IsEnabled="{Binding HasSourceTiming}" Margin="0,0,0,8" />
+                    </StackPanel>
+                    <Button Click="ApplyVideoEditsButton_Click" Content="应用片段修改" Background="#F2FAFD" Margin="0,0,0,6" />
+                    <WrapPanel><Button Click="DuplicateVideoButton_Click" Content="复制" Margin="0,0,6,0" /><Button Click="DeleteVideoButton_Click" Content="删除" /></WrapPanel>
+                      </StackPanel>
+                    </Expander>
+                  </StackPanel>
+                </ScrollViewer>
+            </Border>
+           </Grid>
+          </TabItem>
+          <TabItem x:Name="RecordingTab" Header="歌词打轴">
+           <Grid Margin="0,10,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="6" /><ColumnDefinition Width="340" /></Grid.ColumnDefinitions>
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Border Background="#FFFFFF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,4">
+                            <WrapPanel DockPanel.Dock="Right">
+                                <Button Content="↑" Click="BrowsePreviousLine_Click" Padding="8,3" ToolTip="查看上一句（也可滚动鼠标滚轮）" />
+                                <Button Content="↓" Click="BrowseNextLine_Click" Padding="8,3" Margin="4,0" ToolTip="查看下一句" />
+                                <Button Content="回到打点位置" Click="FollowRecording_Click" Padding="8,3" Margin="0,0,4,0" />
+                                <Button Content="续录未完成" Click="ContinueUnfinishedRecording_Click" Padding="8,3" Margin="0,0,4,0" />
+                                <Button Content="从浏览句重录" Click="RecordFromBrowsedLine_Click" Padding="8,3" ToolTip="显式重录：应用后替换本次录制句子的已有时间" />
+                            </WrapPanel>
+                            <TextBlock x:Name="RecordingBrowseText" Foreground="#687782" VerticalAlignment="Center" Text="全部歌词 · 滚轮浏览" />
+                        </DockPanel>
+                        <TextBlock x:Name="RecordingProgressText" Foreground="#42765C" FontSize="12" Margin="0,0,0,3" Text="项目尚无已应用打点" />
+                        <TextBlock x:Name="NextTapText" Foreground="#92701F" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <Border x:Name="RecordingLanguageWarningPanel" Visibility="Collapsed" Background="#FFFCF2"
+                                BorderBrush="#E9DDB9" BorderThickness="1" CornerRadius="5" Padding="8" Margin="0,5,0,2">
+                            <DockPanel LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="忽略本句提示" Click="DismissRecordingLanguageWarning_Click"
+                                        Padding="8,4" Margin="10,0,0,0" VerticalAlignment="Center"
+                                        ToolTip="本次运行期间不再提示这一句；不改变语言、分词或已打时间。" />
+                                <TextBlock x:Name="RecordingLanguageWarningText" Foreground="#806622" FontSize="12"
+                                           TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </Border>
+                        <TextBlock x:Name="CurrentRecordingLabel" Text="当前句" Foreground="#687782" FontSize="11" Margin="0,5,0,2" />
+                        <ScrollViewer x:Name="CurrentLineScroll" PreviewMouseWheel="RecordingLyrics_MouseWheel" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
+                            <controls:RecordingLyricLine x:Name="CurrentRecordingLine" />
+                        </ScrollViewer>
+                        <TextBlock x:Name="NextRecordingLabel" Text="下一句" Foreground="#687782" FontSize="11" Margin="0,5,0,2" />
+                        <ScrollViewer x:Name="NextLineScroll" PreviewMouseWheel="RecordingLyrics_MouseWheel" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
+                            <controls:RecordingLyricLine x:Name="NextRecordingLine" />
+                        </ScrollViewer>
+                        <TextBlock x:Name="RecordingContextText" Foreground="#5D707B" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,4" />
+                        <StackPanel x:Name="QuickEditPanel" Visibility="Collapsed" Margin="0,2,0,6">
+                            <TextBlock x:Name="QuickEditHint" Foreground="#5D707B" TextWrapping="Wrap" FontSize="11" />
+                            <WrapPanel>
+                                <TextBlock Text="原文" Foreground="#34424D" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBox x:Name="QuickEditText" Width="150" Padding="4" Margin="0,3,10,0" GotKeyboardFocus="QuickEdit_GotKeyboardFocus" />
+                                <TextBlock Text="当前单元读音" Foreground="#34424D" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBox x:Name="QuickEditReading" Width="130" Padding="4" Margin="0,3,10,0" GotKeyboardFocus="QuickEdit_GotKeyboardFocus" />
+                                <Button Content="应用修改" Click="QuickEditApply_Click" Padding="8,4" Margin="0,3,6,0" />
+                                <Button Content="收起" Click="QuickEditClose_Click" Padding="8,4" Margin="0,3,0,0" />
+                            </WrapPanel>
+                        </StackPanel>
+                        <WrapPanel>
+                            <Button Content="编辑整句…" Click="EditRecordingSentence_Click" Padding="8,4" Margin="0,0,6,4" />
+                            <Button Content="单元精修…" Click="EditRecordingUnits_Click" Padding="8,4" Margin="0,0,6,4" />
+                            <Button Content="语言 / 片段…" Click="EditLanguageRegions_Click" Padding="8,4" Margin="0,0,6,4" />
+                            <Button Content="更多编辑" Padding="8,4" Margin="0,0,6,4" Click="RecordingEditMenu_Click">
+                                <Button.ContextMenu><ContextMenu>
+                                    <MenuItem Header="在浏览句后新增一句…" Click="InsertRecordingSentence_Click" />
+                                    <MenuItem Header="删除浏览句" Click="DeleteRecordingSentence_Click" />
+                                    <MenuItem Header="浏览句上移" Click="MoveRecordingSentenceUp_Click" />
+                                    <MenuItem Header="浏览句下移" Click="MoveRecordingSentenceDown_Click" />
+                                    <MenuItem Header="浏览句按语言重新分组" Click="RegroupRecordingSentence_Click" />
+                                </ContextMenu></Button.ContextMenu>
+                            </Button>
+                            <Button Click="SplitRecordingLineButton_Click" Content="在选中单元前换行" Padding="8,4" Margin="0,0,6,4" />
+                            <Button Click="MergeRecordingLineButton_Click" Content="选中句与下一句合并" Padding="8,4" Margin="0,0,6,4" />
+                            <CheckBox x:Name="ShowRomajiCheckBox" Content="显示罗马音（预览 / 导出同步）" Foreground="#5D707B" VerticalAlignment="Center" Margin="4,0,0,4"
+                                      Checked="ShowRomanizationChanged" Unchecked="ShowRomanizationChanged" />
+                        </WrapPanel>
+
+                    </StackPanel>
+                  </ScrollViewer>
+                </Border>
+                <WrapPanel Grid.Row="1" Margin="0,8,0,0">
+                    <Button Click="PlayPauseButton_Click" Content="播放 / 暂停（P）" Margin="0,0,6,4" />
+                    <Button Click="PreRollButton_Click" Content="提前 3 秒进入" Margin="0,0,6,4" />
+                    <Button x:Name="LoopLineButton" Click="LoopLineButton_Click" Content="循环选中歌词行" Margin="0,0,6,4" />
+                    <Button Click="ApplyCurrentMarkersButton_Click" Content="结束本句 / 应用（Enter）" Background="#F0F9FD" Margin="0,0,6,4" />
+                </WrapPanel>
+            </Grid>
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#FAFCFD" />
+            <Border Grid.Column="2" Padding="14" CornerRadius="8" Background="#FFFFFF" BorderBrush="#EFE8D4" BorderThickness="1">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <ContentControl x:Name="RecordingMonitorHost" Height="174" Margin="0,0,0,12" />
+
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#34424D" Text="卡拉 OK 打轴 · 空格记录下一个演唱单元" TextWrapping="Wrap" />
+                    <StackPanel Margin="0,10,0,6">
+                        <ComboBox x:Name="TapModeCombo" SelectedIndex="1" Margin="0,0,0,8" SelectionChanged="TapModeCombo_SelectionChanged" DropDownClosed="RecordingSelector_DropDownClosed"><ComboBoxItem Content="逐行入口（辅助模式）" /><ComboBoxItem Content="逐字 / 英文单词 / 日语音节（默认）" /></ComboBox>
+                        <Button Padding="10,6" Margin="0,0,0,8" Click="AnnotateJapaneseButton_Click" Content="准备语言 / 读音（保留已确认打点）" />
+                        <ComboBox x:Name="RecordingLineCombo" DisplayMemberPath="PrimaryText" SelectionChanged="RecordingLineCombo_SelectionChanged" DropDownClosed="RecordingSelector_DropDownClosed" Margin="0,0,0,8" ToolTip="当前打轴句；手动选择可从该句重录。点击“续录未完成”恢复自动续录。" />
+                        <TextBlock Text="输入补偿（毫秒，负数提前）" Foreground="#5D707B" />
+                        <TextBox x:Name="InputOffsetText" Text="0" Margin="0,4,0,0" />
+                        <TextBlock Text="下列仅为本次待应用打点；已应用进度见歌词区。" Foreground="#687782" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,0" />
+                    </StackPanel>
+                    <ListBox x:Name="MarkerList" Height="110" Margin="0,6" ToolTip="这里只列本次尚未应用的打点；已应用时间保存在项目中，在歌词格及下方时间轴查看。"
+                             SelectionChanged="MarkerList_SelectionChanged"
+                             Background="#FFFFFF" Foreground="#34424D"
+                             BorderBrush="#DDE6EA" FontFamily="Consolas" FontSize="15" />
+                    <StackPanel>
+                        <WrapPanel Margin="0,0,0,8">
+                            <TextBox x:Name="MarkerTimeText" Width="85" Text="0" Margin="0,0,6,0" />
+                            <Button Click="UpdateMarkerButton_Click" Content="改选中点（秒）" Padding="6" />
+                            <Button x:Name="RestartRecordingFromTimingButton" Click="RestartRecording_Click" Content="重新打轴" Padding="6" ToolTip="确认后清空整首歌词时间点，保留歌词文字与读音修改。" />
+                        </WrapPanel>
+                        <Button Click="UndoMarkerButton_Click" Content="回退一个单元（退格）" Margin="0,0,0,6" />
+                        <Button Click="ClearMarkersButton_Click" Content="清空本次时间点" />
+                    </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+           </Grid>
+          </TabItem>
+
+          <TabItem x:Name="LyricSourceTab" Header="歌词获取 / 预览">
+            <Grid Margin="0,10,0,0" Background="#FFFFFF">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
+              <WrapPanel Margin="12">
+                <TextBlock Margin="4,0,6,0" VerticalAlignment="Center"
+                           Foreground="#5D707B" Text="主要语言提示" />
+                <ComboBox x:Name="LyricLanguageCombo" Width="140" Margin="0,4,8,4"
+                          SelectedIndex="3">
+                  <ComboBoxItem Content="日文" Tag="Japanese" />
+                  <ComboBoxItem Content="中文" Tag="Chinese" />
+                  <ComboBoxItem Content="英文（按单词）" Tag="English" />
+                  <ComboBoxItem Content="自动识别（离线）" Tag="Auto" />
+                </ComboBox>
+                <Button Padding="12,7" Margin="4" Click="LoadLanguagePlugin_Click" Content="语言插件…" />
+                <Button Padding="12,7" Margin="4" Click="ImportLyricsButton_Click"
+                        Content="导入 TXT / LRC / SRT" />
+                <Button Padding="12,7" Margin="4" Click="SearchLyricsButton_Click" Content="联网搜索歌词" Background="#F0F9FD" />
+                <Button Padding="12,7" Margin="4" Click="AddSourceLyric_Click" Content="新增歌词行" />
+                <Button Padding="12,7" Margin="4" Click="GoToRecordingLyrics_Click" Content="到打轴页编辑选中句 →" />
+                <TextBlock Text="双击一行修改原文；右键可复制整行、在行前 / 行后插入。读音与分组在打轴页精修。" Foreground="#687782" Margin="8" VerticalAlignment="Center" />
+                <TextBlock x:Name="LyricSourceText" Foreground="#687782" Margin="8" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="600" />
+              </WrapPanel>
+              <DataGrid x:Name="LyricsGrid" Grid.Row="1" Margin="12,0,12,12"
+                        AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="False"
+                        SelectionMode="Single" HeadersVisibility="Column" IsReadOnly="True"
+                        RowHeaderWidth="0" GridLinesVisibility="Horizontal" FontSize="14" MinRowHeight="32">
+                <DataGrid.Resources>
+                  <ContextMenu x:Key="SourceLyricMenu" x:Shared="False"
+                               DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                    <MenuItem Header="修改本行原文（双击）" Click="EditSourceLyric_Click" />
+                    <MenuItem Header="复制整行歌词" Click="CopySourceLyric_Click" />
+                    <Separator />
+                    <MenuItem Header="在此行之前插入歌词…" Click="InsertSourceLyricBefore_Click" />
+                    <MenuItem Header="在此行之后插入歌词…" Click="InsertSourceLyricAfter_Click" />
+                  </ContextMenu>
+                </DataGrid.Resources>
+                <DataGrid.RowStyle>
+                  <Style TargetType="DataGridRow">
+                    <EventSetter Event="MouseDoubleClick" Handler="SourceLyricRow_MouseDoubleClick" />
+                    <EventSetter Event="PreviewMouseRightButtonDown" Handler="SourceLyricRow_PreviewMouseRightButtonDown" />
+                    <Setter Property="ContextMenu" Value="{StaticResource SourceLyricMenu}" />
+                  </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="#" Binding="{Binding Number}" IsReadOnly="True" Width="50" />
+                  <DataGridTemplateColumn Header="歌词原文" Width="*" MinWidth="500">
+                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                      <Grid>
+                        <TextBlock x:Name="SourceLyricDisplay" Text="{Binding PrimaryText}" TextWrapping="Wrap" Margin="6" />
+                        <StackPanel x:Name="SourceLyricEditPanel" Visibility="Collapsed" Margin="6">
+                          <TextBox x:Name="SourceLyricTextBox" Text="{Binding SourceEditText, UpdateSourceTrigger=PropertyChanged}"
+                                   TextWrapping="Wrap" AcceptsReturn="False" FontSize="16" MinHeight="34"
+                                   PreviewKeyDown="SourceLyricTextBox_PreviewKeyDown" />
+                          <WrapPanel Margin="0,6,0,0">
+                            <Button Content="应用修改" Click="ApplySourceLyric_Click" Padding="12,5" Margin="0,0,6,0" />
+                            <Button Content="取消" Click="CancelSourceLyric_Click" Padding="12,5" Margin="0,0,8,0" />
+                            <TextBlock Text="Enter 应用 · Esc 取消 · 修改会重建本句单元" Foreground="#47617D" VerticalAlignment="Center" />
+                          </WrapPanel>
+                        </StackPanel>
+                      </Grid>
+                      <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsSourceEditing}" Value="True">
+                          <Setter TargetName="SourceLyricDisplay" Property="Visibility" Value="Collapsed" />
+                          <Setter TargetName="SourceLyricEditPanel" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                      </DataTemplate.Triggers>
+                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="开始（秒）" Binding="{Binding StartDisplay}" Width="100" />
+                  <DataGridTextColumn Header="结束（秒）" Binding="{Binding EndDisplay}" Width="100" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </Grid>
+          </TabItem>
+          <TabItem Header="片段列表" Visibility="Collapsed">
+            <Grid Margin="0,10,0,0" Background="#FFFFFF">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <WrapPanel Margin="12">
+                <Button Padding="12,7" Margin="4" Click="ApplyVideoEditsButton_Click" Content="应用移动 / 裁切 / 静音" />
+                <Button Padding="12,7" Margin="4" Click="DuplicateVideoButton_Click" Content="复制选中片段" />
+                <Button Padding="12,7" Margin="4" Click="DeleteVideoButton_Click" Content="删除选中片段" />
+                <Button Padding="12,7" Margin="4" Click="MoveVideoUpButton_Click" Content="上移顺序" />
+                <Button Padding="12,7" Margin="4" Click="MoveVideoDownButton_Click" Content="下移顺序" />
+                <Button Padding="12,7" Margin="4" Click="JoinVideosButton_Click" Content="按列表顺序拼接" />
+              </WrapPanel>
+              <DataGrid x:Name="VideoGrid" Grid.Row="1" Margin="12,0,12,12"
+                        AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="False"
+                        SelectionMode="Single" HeadersVisibility="Column" SelectionChanged="VideoGrid_SelectionChanged">
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Header="预览" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate><Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailImageConverter}}" Height="45" Width="80" Stretch="Uniform" /></DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="素材" Binding="{Binding Name}" IsReadOnly="True" Width="2*" />
+                  <DataGridTextColumn Header="时间轴开始（秒）" Binding="{Binding TimelineStartSeconds}" Width="*" />
+                  <DataGridTextColumn Header="素材入点（秒）" Binding="{Binding SourceStartSeconds}" Width="*" />
+                  <DataGridTextColumn Header="片段时长（秒）" Binding="{Binding DurationSeconds}" Width="*" />
+                  <DataGridCheckBoxColumn Header="静音" Binding="{Binding IsMuted}" Width="80" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <TextBlock Grid.Row="2" Margin="16" Foreground="#687782" TextWrapping="Wrap"
+                         Text="视频片段共用一条轨道，不能相互重叠；原声随片段移动，可单独静音。" />
+            </Grid>
+          </TabItem>
+          <TabItem Header="字幕样式">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel Margin="20" Loaded="SubtitleStyleEditor_Loaded">
+                <TextBlock Foreground="#5D707B" TextWrapping="Wrap" Margin="0,0,0,16"
+                           Text="固定双句布局：画面下方 30%，左上与右下交替。日语默认仅在汉字上方标假名；开启罗马音后改为在对应原文上方标罗马音。" />
+                <CheckBox x:Name="StyleShowRomajiCheckBox" Content="显示日语罗马音（替代汉字假名注音，与打轴页同步）" Foreground="#34424D" Margin="0,0,0,14"
+                          Checked="ShowRomanizationChanged" Unchecked="ShowRomanizationChanged" />
+                <WrapPanel>
+                  <StackPanel Width="360" HorizontalAlignment="Left" Margin="0,0,20,14">
+                    <TextBlock Foreground="#34424D" Text="字幕预设" Margin="0,0,0,6" />
+                    <ComboBox x:Name="SubtitlePresetCombo" DisplayMemberPath="Name" Padding="8" SelectionChanged="SubtitlePresetCombo_SelectionChanged" />
+                    <TextBlock Foreground="#687782" TextWrapping="Wrap" Margin="0,6,0,0" Text="选择预设后可继续精调；点击“应用字幕样式”生效。字体、布局和注音开关保持不变。" />
+                  </StackPanel>
+                  <Button x:Name="ApplySubtitleStyleButton" VerticalAlignment="Top" Margin="0,20,0,14" Padding="20,8" Click="ApplySubtitleStyleButton_Click" Content="应用字幕样式" />
+                </WrapPanel>
+                <WrapPanel>
+                  <StackPanel Width="240" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="字体（输入名称搜索本机字体）" Margin="0,0,0,6" />
+                    <ComboBox x:Name="SubtitleFontText" Text="Yu Gothic UI" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True" MaxDropDownHeight="280" Padding="8" DropDownOpened="SubtitleFontText_DropDownOpened" />
+                  </StackPanel>
+                  <StackPanel Width="160" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="主歌词字号（1080p）" Margin="0,0,0,6" />
+                    <TextBox x:Name="PrimaryFontSizeText" Text="64" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="160" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="辅助行字号（1080p）" Margin="0,0,0,6" />
+                    <TextBox x:Name="AnnotationFontSizeText" Text="28" Padding="8" />
+                  </StackPanel>
+                </WrapPanel>
+                <TextBlock x:Name="SubtitleFontStatusText" Foreground="#687782" TextWrapping="Wrap" Margin="0,0,0,12" />
+                <WrapPanel>
+                  <StackPanel Width="200" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="未唱 · 文字颜色" Margin="0,0,0,6" />
+                    <ComboBox x:Name="InactiveColorText" IsEditable="True" Text="#FFFFFFFF" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="200" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="已唱 · 文字颜色" Margin="0,0,0,6" />
+                    <ComboBox x:Name="ActiveColorText" IsEditable="True" Text="#FFFFD54F" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="200" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="未唱 · 描边颜色" Margin="0,0,0,6" />
+                    <ComboBox x:Name="OutlineColorText" IsEditable="True" Text="#FF24465F" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="200" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="已唱 · 描边颜色（空白为沿用）" Margin="0,0,0,6" />
+                    <ComboBox x:Name="ActiveOutlineColorText" IsEditable="True" Text="#FFFFFFFF" Padding="8" />
+                  </StackPanel>
+                </WrapPanel>
+                <WrapPanel>
+                  <StackPanel Width="160" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="描边宽度（1080p）" Margin="0,0,0,6" />
+                    <TextBox x:Name="OutlineWidthText" Text="3" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="160" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="阴影偏移（1080p）" Margin="0,0,0,6" />
+                    <TextBox x:Name="ShadowOffsetText" Text="2" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="160" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="辅助行间距（1080p）" Margin="0,0,0,6" />
+                    <TextBox x:Name="LineGapText" Text="8" Padding="8" />
+                  </StackPanel>
+                  <StackPanel Width="160" Margin="0,0,20,12">
+                    <TextBlock Foreground="#34424D" Text="区域边距（画面宽度 %）" Margin="0,0,0,6" />
+                    <TextBox x:Name="RegionMarginText" Text="4" Padding="8" />
+                  </StackPanel>
+                </WrapPanel>
+                <TextBlock Foreground="#687782" TextWrapping="Wrap" Text="颜色可从下拉框选择，也可输入 #RRGGBB 或 #AARRGGBB；旧项目保留原样式，选择 Liraoke 预设可切换至新配色。长歌词自动缩小以适应固定区域。" Margin="0,0,0,12" />
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+
+        <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="#DFE9EE" ResizeDirection="Rows" />
+        <Border Grid.Row="3" Margin="12,0,12,12" Padding="10" CornerRadius="8" Background="#FFFFFF" BorderBrush="#DDEBF1" BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid>
+                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                  <DockPanel>
+                    <TextBlock x:Name="ClockSourceText" DockPanel.Dock="Right"
+                               Foreground="#527765" Text="时钟：等待音频设备" />
+                    <Button x:Name="PlayPauseButton" Click="PlayPauseButton_Click" Content="播放" IsEnabled="False" Background="#F0F9FD" MinWidth="88" />
+                    <Button Click="GoToStartButton_Click" Content="回到起点" Margin="6,0" />
+                    <TextBlock x:Name="TransportPositionText" Text="00:00.000" Foreground="#34424D" FontFamily="Consolas" VerticalAlignment="Center" Margin="6,0" />
+                    <ComboBox x:Name="PlaybackRateCombo" Width="80" SelectedIndex="2" Margin="12,0" SelectionChanged="PlaybackRateCombo_SelectionChanged">
+                        <ComboBoxItem Content="0.5×" Tag="0.5" /><ComboBoxItem Content="0.75×" Tag="0.75" /><ComboBoxItem Content="1×" Tag="1" />
+                    </ComboBox>
+                    <ProgressBar x:Name="OperationProgress" Maximum="100" Height="16" Margin="12,0" />
+                  </DockPanel>
+                  <WrapPanel Grid.Row="1" Margin="0,6,0,0">
+                    <TextBlock Foreground="#687782" Text="画幅比例" VerticalAlignment="Center" />
+                    <ComboBox x:Name="ExportAspectRatioCombo" Width="112" SelectedIndex="0" Margin="8,0,14,0" IsEnabled="False" SelectionChanged="ExportFormatCombo_SelectionChanged">
+                        <ComboBoxItem Content="16:9 · 横屏" /><ComboBoxItem Content="4:3 · 横屏" />
+                        <ComboBoxItem Content="1:1 · 方形" /><ComboBoxItem Content="9:16 · 竖屏" />
+                    </ComboBox>
+                    <TextBlock Foreground="#687782" Text="分辨率" VerticalAlignment="Center" />
+                    <ComboBox x:Name="ExportResolutionCombo" Width="90" SelectedIndex="0" Margin="8,0,14,0" IsEnabled="False" SelectionChanged="ExportFormatCombo_SelectionChanged">
+                        <ComboBoxItem Content="1080p" /><ComboBoxItem Content="720p" />
+                    </ComboBox>
+                    <TextBlock Foreground="#687782" Text="帧率" VerticalAlignment="Center" />
+                    <ComboBox x:Name="ExportFrameRateCombo" Width="90" SelectedIndex="1" Margin="8,0,14,0" IsEnabled="False" SelectionChanged="ExportFormatCombo_SelectionChanged">
+                        <ComboBoxItem Content="24 fps" /><ComboBoxItem Content="30 fps" /><ComboBoxItem Content="60 fps" />
+                    </ComboBox>
+                    <TextBlock x:Name="ExportDimensionsText" Text="1920 × 1080" Foreground="#687782" VerticalAlignment="Center" ToolTip="预览与导出使用相同画幅；图片等比例铺满并居中裁切。" />
+                  </WrapPanel>
+                  <WrapPanel x:Name="WorkAreaPanel" Grid.Row="2" Margin="0,6,0,0" IsEnabled="False"
+                             ToolTip="只裁切成片范围，不删除素材或歌词打点；打轴页保留完整歌曲。起止位置使用原时间轴秒数，修改后点击应用裁切。">
+                    <TextBlock Text="工作区裁切" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Text="起点 / 秒" VerticalAlignment="Center" />
+                    <TextBox x:Name="WorkAreaStartText" Text="0" Width="74" Margin="6,0" />
+                    <Button Content="当前位置设为起点" Click="WorkAreaStartHere_Click" Padding="6,4" Margin="0,0,10,0" />
+                    <TextBlock Text="终点 / 秒" VerticalAlignment="Center" />
+                    <TextBox x:Name="WorkAreaEndText" Text="0" Width="74" Margin="6,0" />
+                    <Button Content="当前位置设为终点" Click="WorkAreaEndHere_Click" Padding="6,4" Margin="0,0,10,0" />
+                    <Button Content="应用裁切" Click="ApplyWorkArea_Click" Padding="8,4" Margin="0,0,6,0" />
+                    <Button Content="恢复全长" Click="ResetWorkArea_Click" Padding="8,4" Margin="0,0,10,0" />
+                    <TextBlock x:Name="WorkAreaDurationText" Text="成片 0 秒" Foreground="#687782" VerticalAlignment="Center" />
+                  </WrapPanel>
+                </Grid>
+                <Grid Grid.Row="1" Margin="0,8,0,0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <DockPanel>
+                        <TextBlock x:Name="TimelineModeText" Text="时间轴 · 歌曲 / 视频 / 字幕" Foreground="#34424D" VerticalAlignment="Center" Margin="4,0,12,0" />
+                        <WrapPanel x:Name="ClipToolsPanel">
+                            <Button Click="SplitSelectedClipButton_Click" Content="分割（Ctrl+B）" Margin="0,0,6,0" Padding="10,4" />
+                            <Button Click="DeleteVideoButton_Click" Content="删除（Del）" Margin="0,0,6,0" Padding="10,4" />
+                            <Button Click="ToggleSelectedMuteButton_Click" Content="视频静音" Margin="0,0,6,0" Padding="10,4" />
+                            <Button Click="JoinVideosButton_Click" Content="顺序拼接" Margin="0,0,6,0" Padding="10,4" />
+                            <Button Click="FitTimelineButton_Click" Content="适合窗口" Padding="10,4" />
+                        </WrapPanel>
+                    </DockPanel>
+                <Slider x:Name="PositionSlider" Grid.Row="1" Visibility="Collapsed" Margin="0"
+                        Minimum="0" Maximum="1" IsEnabled="False"
+                        PreviewMouseLeftButtonUp="PositionSlider_PreviewMouseLeftButtonUp" />
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <controls:ProjectTimelineControl x:Name="ProjectTimeline" />
+                    </ScrollViewer>
+                </Grid>
+                    <TextBlock x:Name="StatusText" Grid.Row="2" Margin="0,6,0,0"
+                               Foreground="#687782" TextWrapping="Wrap"
+                               Text="空格播放 / 暂停 · 拖动视频片段移动，拖边缘裁切 · 滚轮缩放，Shift+滚轮平移" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

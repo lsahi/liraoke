@@ -1,0 +1,23 @@
+KaraokeFilmMaker MVP third-party components
+
+.NET / WPF: Microsoft, MIT license.
+https://github.com/dotnet/runtime
+https://github.com/dotnet/wpf
+
+NAudio.Wasapi and NAudio.Core 3.1.0: Mark Heath and contributors, MIT license.
+https://github.com/naudio/NAudio
+
+LibNMeCab and LibNMeCab.IpaDicBin 0.10.0: Tsuyoshi Komuta, MeCab authors,
+GPL-2.0-or-later OR LGPL-2.1-or-later. Used as separate, replaceable assemblies.
+https://github.com/komutan/NMeCab
+IPA dictionary copyright and terms are included in IpaDic/COPYING and IpaDic/AUTHORS.
+
+FFmpeg 8.1.2 gyan.dev essentials build: GPLv3 build, used as separate executables.
+The original license and pinned download manifest are included in tools/ffmpeg.
+Build origin: https://www.gyan.dev/ffmpeg/builds/
+FFmpeg source: https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
+Build metadata: scripts/media-toolchain.json in the source workspace.
+
+This is an internal MVP acceptance package, not a public-release distribution.
+Before public distribution, include the complete corresponding source and
+third-party license materials required by the selected binary builds.

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KaraokeFilmMaker.App/KaraokeFilmMaker.App.csproj" />
+    <Project Path="src/KaraokeFilmMaker.Application/KaraokeFilmMaker.Application.csproj" />
+    <Project Path="src/KaraokeFilmMaker.Domain/KaraokeFilmMaker.Domain.csproj" />
+    <Project Path="src/KaraokeFilmMaker.Infrastructure/KaraokeFilmMaker.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KaraokeFilmMaker.App.Tests/KaraokeFilmMaker.App.Tests.csproj" />
+    <Project Path="tests/KaraokeFilmMaker.Application.Tests/KaraokeFilmMaker.Application.Tests.csproj" />
+    <Project Path="tests/KaraokeFilmMaker.Domain.Tests/KaraokeFilmMaker.Domain.Tests.csproj" />
+    <Project Path="tests/KaraokeFilmMaker.Infrastructure.Tests/KaraokeFilmMaker.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\KaraokeFilmMaker.Domain\KaraokeFilmMaker.Domain.csproj" />
+    <ProjectReference Include="..\KaraokeFilmMaker.Application\KaraokeFilmMaker.Application.csproj" />
+    <ProjectReference Include="..\KaraokeFilmMaker.Infrastructure\KaraokeFilmMaker.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <Version>0.4.4.3</Version>
+    <AssemblyName>Liraoke</AssemblyName>
+    <RootNamespace>KaraokeFilmMaker.App</RootNamespace>
+    <Title>莉拉OK! / Liraoke</Title>
+    <Product>莉拉OK! / Liraoke</Product>
+    <Description>莉拉OK! (Liraoke) — 卡拉 OK 视频制作工具</Description>
+    <ApplicationIcon>Assets\Liraoke.ico</ApplicationIcon>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Liraoke.ico" />
+    <Resource Include="Assets\Liraoke.source.png" />
+    <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe" Link="tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffprobe.exe" Link="tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffprobe.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\LICENSE" Link="tools\ffmpeg\LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\scripts\media-toolchain.json" Link="tools\ffmpeg\media-toolchain.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\THIRD_PARTY_NOTICES.txt" Link="THIRD_PARTY_NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

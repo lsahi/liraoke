@@ -1,0 +1,80 @@
+<Window x:Class="KaraokeFilmMaker.App.LyricSearchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="联网搜索歌词" Width="1080" Height="760" MinWidth="860" MinHeight="600"
+        WindowStartupLocation="CenterOwner" Closed="Window_Closed"
+        FontFamily="Segoe UI" FontSize="13" Foreground="#34424D" Background="#FAFCFD">
+    <Grid Background="#FAFCFD" Margin="0">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Themes/LightTheme.xaml" /></ResourceDictionary.MergedDictionaries>
+                <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#34424D" /></Style>
+                <Style TargetType="Button" BasedOn="{StaticResource LiraButtonStyle}"><Setter Property="Padding" Value="14,8" /><Setter Property="Margin" Value="0,0,8,0" /></Style>
+            </ResourceDictionary>
+        </Grid.Resources>
+        <Grid Margin="18">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <StackPanel>
+                <TextBlock Text="搜索歌词，不需要 AI 或 API Key" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10" />
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,12,0"><TextBlock Text="歌名 / 搜索关键词" /><TextBox x:Name="TitleInput" MaxLength="200" Margin="0,4,0,0" /></StackPanel>
+                    <StackPanel Grid.Column="1"><TextBlock Text="歌手（可选）" /><TextBox x:Name="ArtistInput" MaxLength="200" Margin="0,4,0,0" /></StackPanel>
+                </Grid>
+                <TextBlock Text="仅在你点击搜索时发送歌名和歌手，不上传歌曲、视频或工作区。找到的版本和时间仍需人工核对。" TextWrapping="Wrap" Foreground="#687782" Margin="0,8,0,12" />
+            </StackPanel>
+            <TabControl x:Name="SearchTabs" Grid.Row="1" Background="White" BorderBrush="#DDEBF1">
+                <TabItem x:Name="LrclibTab" Header="LRCLIB（软件内搜索）">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Button x:Name="SearchButton" Click="SearchButton_Click" Content="搜索 LRCLIB" />
+                            <Button x:Name="CancelSearchButton" Click="CancelSearchButton_Click" Content="取消搜索" IsEnabled="False" />
+                            <TextBlock x:Name="SearchStatus" Text="输入歌名后搜索；日语结果不保证齐全。" Foreground="#526176" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="650" />
+                        </StackPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <DataGrid x:Name="ResultsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionChanged="ResultsGrid_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="歌曲" Binding="{Binding Title}" Width="*" MinWidth="140" />
+                                    <DataGridTextColumn Header="歌手" Binding="{Binding Artist}" Width="*" MinWidth="100" />
+                                    <DataGridTextColumn Header="时长" Binding="{Binding DurationDescription}" Width="60" />
+                                    <DataGridTextColumn Header="格式" Binding="{Binding FormatDescription}" Width="95" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="White" />
+                            <Grid Grid.Column="2">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <TextBlock x:Name="ResultInfoText" Text="请选择一个结果，确认歌手和版本后导入。" Foreground="#26364B" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <CheckBox x:Name="UseTimingCheck" Grid.Row="1" Content="保留该版本的 LRC 行时间（仍需校准）" IsChecked="True" Click="UseTimingCheck_Click" Margin="0,0,0,8" />
+                                <TextBox x:Name="ResultPreviewText" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="PasteTab" Header="粘贴已授权歌词">
+                    <Grid Margin="16">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="来源 HTTPS 网页地址（可选，仅记录，不自动抓取）" Foreground="#26364B" />
+                            <TextBox x:Name="PasteSourceInput" Margin="0,4,0,10" />
+                        </StackPanel>
+                        <CheckBox x:Name="PasteTimingCheck" Grid.Row="1" Content="粘贴的是带 [mm:ss.xx] 行时间的 LRC 文本" Margin="0,0,0,10" />
+                        <TextBox x:Name="PasteLyricsInput" Grid.Row="2" MaxLength="256000" AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
+                    </Grid>
+                </TabItem>
+            </TabControl>
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <CheckBox x:Name="RightsCheck" Content="我确认有使用这些歌词的权限；接口或网站提供文本不代表授权制作/发布视频。" Foreground="#34424D" Margin="0,0,0,10" />
+                <DockPanel Grid.Row="1">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Click="ImportSelectedButton_Click" Content="预览确认后导入" />
+                        <Button IsCancel="True" Content="关闭" Margin="0" />
+                    </StackPanel>
+                    <TextBlock x:Name="ImportStatus" Text="导入会替换当前歌词，可撤销；原始文件及来源将存入工作区。" Foreground="#687782" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
+                </DockPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
