@@ -12,13 +12,11 @@ $apiRoot = "https://gitee.com/api/v5/repos/$Owner/$Repository"
 $headers = @{ Authorization = "Bearer $AccessToken" }
 $release = $null
 
-# PowerShell 7.4+ separates connection and response-stream read timeouts.
+# Keep the default request timeouts while logging where publishing waits.
 # Do not retry writes automatically: a timed-out upload may have reached Gitee.
 function Invoke-GiteeRequest {
     param($Method, $Uri, $Headers, $ContentType, $Body, $Form)
     $request = @{} + $PSBoundParameters
-    $request.ConnectionTimeoutSeconds = 30
-    $request.OperationTimeoutSeconds = 120
     $request.StatusCodeVariable = 'httpStatus'
     $timer = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Host "Gitee: starting $Method $Uri"
