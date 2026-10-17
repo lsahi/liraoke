@@ -39,11 +39,27 @@ Projects use the `.lrn` format and relative paths, so a complete workspace can b
 
 ## Current boundaries
 
-- Windows x64 only, targeting Windows 10 version 1809 or later;
+- Windows x64 only;
 - A single background image/video track;
 - Automatic language detection and Japanese readings require human review;
 - Beat analysis is optional assistance, not the source of timeline truth;
 - No AI-generated first cut, advanced video effects, or external subtitle-project export.
+
+## System requirements and tested environment
+
+The minimum supported system is **Windows 10 version 1809 (build 17763), x64**. Later 64-bit Windows versions are also supported. The portable package includes the required .NET runtime, FFmpeg, and Japanese dictionary.
+
+Automated tests and local builds currently run on this development machine:
+
+| Component | Tested configuration |
+| --- | --- |
+| Operating system | Windows 11 Pro 64-bit, version 10.0.26200 (build 26200) |
+| Processor | AMD Ryzen 7 9800X3D |
+| Memory | 32 GB (approximately 30.8 GiB physical memory reported by the system) |
+| Discrete GPU | NVIDIA GeForce RTX 5080, driver 32.0.16.1088 |
+| Integrated GPU | AMD Radeon Graphics, driver 32.0.21030.2001 |
+
+This is a verified configuration, not a minimum hardware requirement. Long previews, full-song exports, and performance on older or lower-spec hardware still require device testing.
 
 See [MVP requirements and architecture](docs/MVP_REQUIREMENTS_AND_ARCHITECTURE.md) for details. Language plug-in authors should read the [language plug-in guide](docs/LANGUAGE_PLUGINS.md).
 
