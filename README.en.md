@@ -1,36 +1,52 @@
 # Liraoke
 
-#### Description
-一站式卡拉OK字幕解决方案
+[中文](README.md)
 
-#### Software Architecture
-Software architecture description
+Liraoke is a Windows karaoke video maker. It keeps a song, lyrics, and background media in one workspace so you can edit lyrics, time each sung unit, preview the result, and export an MP4 with progressive karaoke highlighting.
 
-#### Installation
+The project is currently being polished for its first public release.
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+## What it does
 
-#### Instructions
+- Imports songs and image or video backgrounds;
+- Imports TXT, LRC, and SRT lyrics or searches LRCLIB;
+- Edits Chinese, English, and Japanese lyrics with offline language and reading preparation;
+- Records timing per character, word, or sung syllable from keyboard input;
+- Adjusts subtitle styles, aspect ratio, clips, output range, beat assistance, and audio visualizations;
+- Previews and exports H.264/AAC MP4 video.
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+## Main modules
 
-#### Contribution
+| Module | Purpose |
+| --- | --- |
+| Workspace | Manages `.lrn` projects and media with recovery and portable relative paths |
+| Lyrics | Imports, searches, edits, and analyzes multilingual lyrics |
+| Timing | Records sung-unit timing with retakes, slow playback, and optional beat snapping |
+| Timeline | Arranges a single image/video track, mixes audio, and selects the output range |
+| Subtitles & visuals | Controls progressive highlighting, readings, fonts, aspect ratio, and five audio visualizers |
+| Preview & export | Uses shared rendering behavior to preview and export MP4 |
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+## Quick start
 
+1. Download and fully extract the Windows x64 portable package; do not copy only the EXE.
+2. Run `Liraoke.exe`, create a workspace, and import a song.
+3. Add lyrics and background media, then press Space along with the vocal in the timing view.
+4. Preview the result, choose output settings, and export an MP4.
 
-#### Gitee Feature
+The portable package includes the .NET runtime, FFmpeg, and the Japanese dictionary. Visual Studio, the SDK, a global FFmpeg installation, and Japanese speech components are not required.
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+Projects use the `.lrn` format and relative paths, so a complete workspace can be moved as a unit. Legacy single-track `project.kfp` projects can still be opened.
+
+## Current boundaries
+
+- Windows x64 only, targeting Windows 10 version 1809 or later;
+- A single background image/video track;
+- Automatic language detection and Japanese readings require human review;
+- Beat analysis is optional assistance, not the source of timeline truth;
+- No AI-generated first cut, advanced video effects, or external subtitle-project export.
+
+See [MVP requirements and architecture](docs/MVP_REQUIREMENTS_AND_ARCHITECTURE.md) for details. Language plug-in authors should read the [language plug-in guide](docs/LANGUAGE_PLUGINS.md).
+
+## License
+
+See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
