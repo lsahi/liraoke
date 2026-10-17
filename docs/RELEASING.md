@@ -40,6 +40,7 @@ Open the GitHub repository's **Actions → Publish release → Run workflow**, e
 ## Security and behavior
 
 - Branch synchronization occurs only after a successful build, test, and package job.
+- GitHub-hosted Windows runners have no default audio endpoint, so CI excludes `WasapiPlaybackTests`; run the complete suite on a Windows machine with an audio device before a public release.
 - The workflows never force-push branches or tags.
 - Release assets are built from the tagged commit, not from the latest branch head.
 - GitHub's automatically generated “Source code” archives are source snapshots. Users should download the uploaded `Liraoke-*-win-x64.zip` asset.

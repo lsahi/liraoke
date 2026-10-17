@@ -1,10 +1,19 @@
 $ErrorActionPreference = 'Stop'
 
-& dotnet test KaraokeFilmMaker.slnx `
-    -c Release `
-    --no-build `
-    --no-restore `
-    --logger 'trx;LogFilePrefix=test-results'
+$arguments = @(
+    'test', 'KaraokeFilmMaker.slnx',
+    '-c', 'Release',
+    '--no-build',
+    '--no-restore',
+    '--logger', 'trx;LogFilePrefix=test-results'
+)
+
+if ($env:GITHUB_ACTIONS -eq 'true') {
+    Write-Output '::notice::Skipping WasapiPlaybackTests because GitHub-hosted runners have no default audio endpoint.'
+    $arguments += @('--filter', 'FullyQualifiedName!~WasapiPlaybackTests')
+}
+
+& dotnet @arguments
 $testExitCode = $LASTEXITCODE
 
 if ($testExitCode -eq 0) { exit 0 }

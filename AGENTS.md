@@ -112,6 +112,7 @@ dotnet test KaraokeFilmMaker.slnx --no-build --no-restore
 - Exercise Chinese, English, Japanese, mixed-language segments, punctuation, and ambiguous/unknown-language cases when modifying lyrics.
 - Exercise horizontal, vertical, square, and 4:3 output when modifying layout or rendering.
 - Do not interpret a green automated suite as proof of performance on older hardware or proof that a full song workflow has passed human acceptance.
+- GitHub-hosted Windows runners do not expose a default WASAPI endpoint. `scripts/test-ci.ps1` excludes `WasapiPlaybackTests` only when `GITHUB_ACTIONS=true`; run the unfiltered suite on real Windows audio hardware for release acceptance.
 
 ## Scope boundaries
 
