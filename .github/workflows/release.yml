@@ -24,8 +24,6 @@ jobs:
     timeout-minutes: 60
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-      GITEE_SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
-      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
 
     steps:
       - name: Check out release tag
@@ -41,7 +39,6 @@ jobs:
           path: .release-automation
           sparse-checkout: |
             scripts/test-ci.ps1
-            scripts/publish-gitee-release.ps1
           sparse-checkout-cone-mode: false
 
       - name: Validate tag and project version
@@ -130,44 +127,6 @@ jobs:
           }
           if ($LASTEXITCODE -ne 0) { throw 'GitHub Release publishing failed.' }
 
-      - name: Configure Gitee SSH key
-        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
-        shell: pwsh
-        run: |
-          $sshDirectory = Join-Path $env:USERPROFILE '.ssh'
-          New-Item -ItemType Directory -Path $sshDirectory -Force | Out-Null
-          $privateKey = Join-Path $sshDirectory 'id_ed25519'
-          $env:GITEE_SSH_PRIVATE_KEY | Set-Content -LiteralPath $privateKey -Encoding ascii
-          ssh-keyscan -t ed25519 gitee.com | Add-Content -LiteralPath (Join-Path $sshDirectory 'known_hosts') -Encoding ascii
-
-      - name: Push release tag to Gitee
-        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
-        shell: pwsh
-        run: |
-          git remote add gitee-sync git@gitee.com:harubilira/liraoke.git
-          git push gitee-sync "refs/tags/$env:RELEASE_TAG:refs/tags/$env:RELEASE_TAG"
-
-      - name: Create or update Gitee Release
-        if: ${{ env.GITEE_TOKEN != '' }}
-        shell: pwsh
-        env:
-          ARCHIVE: ${{ steps.package.outputs.archive }}
-          CHECKSUM: ${{ steps.package.outputs.checksum }}
-        run: |
-          $script = if (Test-Path -LiteralPath './scripts/publish-gitee-release.ps1') {
-            './scripts/publish-gitee-release.ps1'
-          }
-          else {
-            './.release-automation/scripts/publish-gitee-release.ps1'
-          }
-          & $script `
-            -Owner 'harubilira' `
-            -Repository 'liraoke' `
-            -Tag $env:RELEASE_TAG `
-            -TargetCommitish 'master' `
-            -Files @($env:ARCHIVE, $env:CHECKSUM) `
-            -AccessToken $env:GITEE_TOKEN
-
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -177,3 +136,64 @@ jobs:
             ${{ steps.package.outputs.checksum }}
           if-no-files-found: error
           retention-days: 30
+
+  publish-gitee:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GITEE_SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Check out current release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: .release-automation
+          sparse-checkout: scripts/publish-gitee-release.ps1
+          sparse-checkout-cone-mode: false
+
+      - name: Download release package
+        uses: actions/download-artifact@v4
+        with:
+          name: Liraoke-${{ env.RELEASE_TAG }}-win-x64
+          path: artifacts/release
+
+      - name: Configure Gitee SSH key
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$GITEE_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 gitee.com >> ~/.ssh/known_hosts
+
+      - name: Push release tag to Gitee
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        shell: bash
+        run: |
+          git remote add gitee-sync git@gitee.com:harubilira/liraoke.git
+          git push gitee-sync "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+      - name: Create or update Gitee Release
+        if: ${{ env.GITEE_TOKEN != '' }}
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem -LiteralPath 'artifacts/release' -Filter '*.zip' -Recurse | Select-Object -First 1
+          $checksum = Get-ChildItem -LiteralPath 'artifacts/release' -Filter '*.sha256' -Recurse | Select-Object -First 1
+          if (-not $archive -or -not $checksum) { throw 'Downloaded release files are incomplete.' }
+          & './.release-automation/scripts/publish-gitee-release.ps1' `
+            -Owner 'harubilira' `
+            -Repository 'liraoke' `
+            -Tag $env:RELEASE_TAG `
+            -TargetCommitish 'master' `
+            -Files @($archive.FullName, $checksum.FullName) `
+            -AccessToken $env:GITEE_TOKEN

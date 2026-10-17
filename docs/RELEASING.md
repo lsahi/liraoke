@@ -5,7 +5,7 @@ GitHub Actions builds, tests, packages, and synchronizes this repository.
 ## Workflows
 
 - `.github/workflows/ci-sync.yml` runs on every push to `master` or `dev`, including merge commits. It builds and tests on Windows, creates the portable ZIP, stores it as a workflow artifact, and pushes the successful branch commit to Gitee.
-- `.github/workflows/release.yml` runs on every `v*` tag. It rebuilds and tests the tagged commit, creates the ZIP and SHA-256 file, creates or updates the GitHub and Gitee releases, and uploads both files.
+- `.github/workflows/release.yml` runs on every `v*` tag. Windows rebuilds and tests the tagged commit, creates the ZIP/checksum, and publishes GitHub; a dependent Ubuntu job downloads the exact same artifact, pushes the tag, and publishes Gitee.
 - The release workflow can also be run manually for an existing tag. This is useful for repairing or backfilling release assets.
 - Historical tags created before the automation scripts are supported: application sources come from the tag while release tooling falls back to the current `master` version.
 
