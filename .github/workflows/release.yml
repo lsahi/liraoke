@@ -174,7 +174,16 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$GITEE_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -t ed25519 gitee.com >> ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_ed25519 >/dev/null
+          for attempt in 1 2 3 4 5; do
+            if ssh-keyscan -T 10 -t ed25519 gitee.com > ~/.ssh/known_hosts; then
+              exit 0
+            fi
+            echo "Gitee host-key lookup failed (attempt ${attempt}/5); retrying..." >&2
+            sleep $((attempt * 2))
+          done
+          echo 'Unable to obtain the Gitee SSH host key after 5 attempts.' >&2
+          exit 1
 
       - name: Push release tag to Gitee
         if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
