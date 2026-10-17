@@ -28,6 +28,7 @@ The public product name is **Liraoke / 莉拉OK!**. Internal solution, assembly,
 - `scripts/bootstrap-media.ps1`: provisions the pinned media toolchain.
 - `scripts/media-toolchain.json`: pinned FFmpeg version and hashes.
 - `scripts/publish-mvp.ps1`: builds the portable Windows package.
+- `scripts/test-ci.ps1`: runs the Release suite in CI, emits failed-test annotations, and leaves TRX reports for diagnostics.
 - `scripts/build-app-icon.ps1`: creates ICO sizes from the existing source image; it must not redesign the artwork.
 - `KARAOKE_PROJECT_CONTEXT.md`: early product context. Treat the requirements/architecture document and current code as newer authority where they differ.
 

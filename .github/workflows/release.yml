@@ -63,7 +63,16 @@ jobs:
 
       - name: Test
         shell: pwsh
-        run: dotnet test KaraokeFilmMaker.slnx -c Release --no-build --no-restore
+        run: ./scripts/test-ci.ps1
+
+      - name: Upload test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ env.RELEASE_TAG }}
+          path: '**/TestResults/test-results*.trx'
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Create portable package and checksum
         id: package
