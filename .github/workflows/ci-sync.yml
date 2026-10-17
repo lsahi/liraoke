@@ -1,0 +1,89 @@
+name: Build, test, package, and sync
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-package:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Bootstrap pinned FFmpeg
+        shell: pwsh
+        run: ./scripts/bootstrap-media.ps1
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore KaraokeFilmMaker.slnx --configfile NuGet.Config
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build KaraokeFilmMaker.slnx -c Release --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: dotnet test KaraokeFilmMaker.slnx -c Release --no-build --no-restore
+
+      - name: Create portable package
+        shell: pwsh
+        run: ./scripts/publish-mvp.ps1
+
+      - name: Upload CI package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Liraoke-${{ github.ref_name }}-${{ github.sha }}-win-x64
+          path: artifacts/package/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  sync-gitee:
+    needs: build-test-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITEE_SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
+
+    steps:
+      - name: Check out full history
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Gitee SSH key
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$GITEE_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 gitee.com >> ~/.ssh/known_hosts
+
+      - name: Push branch to Gitee
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        shell: bash
+        run: |
+          git remote add gitee-sync git@gitee.com:harubilira/liraoke.git
+          git push gitee-sync "HEAD:refs/heads/${GITHUB_REF_NAME}"

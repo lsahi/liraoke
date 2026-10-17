@@ -23,6 +23,7 @@ The public product name is **Liraoke / 莉拉OK!**. Internal solution, assembly,
 - `docs/MVP_REQUIREMENTS_AND_ARCHITECTURE.md`: current product requirements, architecture baseline, acceptance criteria, and implementation decisions.
 - `docs/LANGUAGE_PLUGINS.md`: language plug-in contract and example workflow.
 - `docs/POC_PLAYBACK_SYNC.md`: playback and long-running synchronization acceptance guidance.
+- `docs/RELEASING.md`: CI synchronization, release automation, required secrets, and release procedure.
 - `examples/language-plugin`: reference plug-in implementation; it demonstrates the API and is not a complete language pack.
 - `scripts/bootstrap-media.ps1`: provisions the pinned media toolchain.
 - `scripts/media-toolchain.json`: pinned FFmpeg version and hashes.

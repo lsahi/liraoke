@@ -1,0 +1,147 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish or repair, for example v0.4.4.3-beta
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GITEE_SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Validate tag and project version
+        shell: pwsh
+        run: |
+          $project = [xml](Get-Content -LiteralPath 'src/KaraokeFilmMaker.App/KaraokeFilmMaker.App.csproj')
+          $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+          $tagVersion = $env:RELEASE_TAG -replace '^v', '' -replace '-.*$', ''
+          if ($tagVersion -ne $version) {
+            throw "Tag $env:RELEASE_TAG does not match project version $version."
+          }
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Bootstrap pinned FFmpeg
+        shell: pwsh
+        run: ./scripts/bootstrap-media.ps1
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore KaraokeFilmMaker.slnx --configfile NuGet.Config
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build KaraokeFilmMaker.slnx -c Release --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: dotnet test KaraokeFilmMaker.slnx -c Release --no-build --no-restore
+
+      - name: Create portable package and checksum
+        id: package
+        shell: pwsh
+        run: |
+          ./scripts/publish-mvp.ps1
+          $archive = Get-ChildItem -LiteralPath 'artifacts/package' -Filter 'Liraoke-*-win-x64.zip' |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+          if (-not $archive) { throw 'Release archive was not created.' }
+          $checksumPath = "$($archive.FullName).sha256"
+          $hash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($archive.Name)" | Set-Content -LiteralPath $checksumPath -Encoding ascii
+          "archive=$($archive.FullName)" >> $env:GITHUB_OUTPUT
+          "checksum=$checksumPath" >> $env:GITHUB_OUTPUT
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+        run: |
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG $env:ARCHIVE $env:CHECKSUM --clobber --repo $env:GITHUB_REPOSITORY
+          }
+          else {
+            $arguments = @(
+              'release', 'create', $env:RELEASE_TAG,
+              $env:ARCHIVE, $env:CHECKSUM,
+              '--repo', $env:GITHUB_REPOSITORY,
+              '--title', "Liraoke $env:RELEASE_TAG",
+              '--generate-notes'
+            )
+            if ($env:RELEASE_TAG -match '-') { $arguments += '--prerelease' }
+            & gh @arguments
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub Release publishing failed.' }
+
+      - name: Configure Gitee SSH key
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        shell: pwsh
+        run: |
+          $sshDirectory = Join-Path $env:USERPROFILE '.ssh'
+          New-Item -ItemType Directory -Path $sshDirectory -Force | Out-Null
+          $privateKey = Join-Path $sshDirectory 'id_ed25519'
+          $env:GITEE_SSH_PRIVATE_KEY | Set-Content -LiteralPath $privateKey -Encoding ascii
+          ssh-keyscan -t ed25519 gitee.com | Add-Content -LiteralPath (Join-Path $sshDirectory 'known_hosts') -Encoding ascii
+
+      - name: Push release tag to Gitee
+        if: ${{ env.GITEE_SSH_PRIVATE_KEY != '' }}
+        shell: pwsh
+        run: |
+          git remote add gitee-sync git@gitee.com:harubilira/liraoke.git
+          git push gitee-sync "refs/tags/$env:RELEASE_TAG:refs/tags/$env:RELEASE_TAG"
+
+      - name: Create or update Gitee Release
+        if: ${{ env.GITEE_TOKEN != '' }}
+        shell: pwsh
+        env:
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+        run: |
+          ./scripts/publish-gitee-release.ps1 `
+            -Owner 'harubilira' `
+            -Repository 'liraoke' `
+            -Tag $env:RELEASE_TAG `
+            -TargetCommitish 'master' `
+            -Files @($env:ARCHIVE, $env:CHECKSUM) `
+            -AccessToken $env:GITEE_TOKEN
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Liraoke-${{ env.RELEASE_TAG }}-win-x64
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 30
