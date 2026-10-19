@@ -8,3 +8,4 @@ artifacts/
 tools/
 .packages/
 *.kfp.user
+.local-release/

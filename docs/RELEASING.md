@@ -1,5 +1,27 @@
 # Release automation
 
+## Local master push hook
+
+The repository-local `core.hooksPath` can be set to `.githooks` to enable
+`pre-push`. PowerShell 7.4+ (`pwsh`) must be on the PATH used by Git.
+Fill `.local-release/config.json` with `githubPat` and `giteePat`; this directory
+is ignored by Git and stores plaintext secrets. Do not share or commit it.
+Set `enabled` to false to disable local publishing.
+
+For a push targeting master, the hook reads Version from the actual pushed SHA,
+records it in `.local-release/last-release.json`, creates
+`v<version>-local.<12-character-SHA>`, pushes that tag, and builds/uploads to the
+destination platform. GitHub and Gitee pushes are separate; push to both remotes
+to publish to both. Successful packages are cached per commit for byte-identical
+uploads on the second platform. Dev, tag-only and branch-deletion pushes skip it.
+
+This is synchronous pre-push, not post-push: uploads happen BEFORE the master
+update. Failure aborts the master push, but already-created tags/assets remain.
+Retrying can replace same-named assets. The tag must contain the local-tag exclusion
+in release.yml to prevent competing Actions releases. Commit the hook/workflow
+changes before using it. Normal version tags and CI branch builds remain enabled.
+This hook packages but does not run release acceptance tests.
+
 GitHub Actions builds, tests, packages, and synchronizes this repository.
 
 ## Workflows
@@ -37,6 +59,66 @@ The tag workflow pushes the same tag to Gitee and publishes both platform releas
 ## Backfill an existing release
 
 Open the GitHub repository's **Actions → Publish release → Run workflow**, enter the existing tag, and run it. The workflow preserves an existing platform release while replacing same-named ZIP/checksum attachments.
+
+## Local build and upload to both platforms
+
+Run in PowerShell 7.4+ with Git, tar and .NET 10 SDK installed:
+
+```powershell
+./scripts/publish-local.ps1 -Tag v0.4.4.3-beta -Build
+```
+
+This exports the local tag to a unique directory under `artifacts/local-release`,
+bootstraps media, and packages the tagged code without changing your checkout.
+The exported tag must include `bootstrap-media.ps1` and `publish-mvp.ps1`.
+Build directories and source archives are retained for inspection and retries.
+Release acceptance tests should be completed separately; this entry point packages
+and uploads but does not run the suite.
+
+Both remote tags must already exist. Stop concurrent Actions release jobs first.
+GitHub uses `GH_TOKEN` or a masked prompt: a fine-grained PAT scoped to
+`lsahi/liraoke` with Contents read/write permission. Gitee uses `GITEE_TOKEN` or
+a masked prompt with project access to `harubilira/liraoke`. SSH keys alone do
+not authorize release API uploads. No token is stored by these scripts.
+
+To reuse a package or retry one platform:
+
+```powershell
+./scripts/publish-local.ps1 -Tag v0.4.4.3-beta -ArchivePath 'C:/path/Liraoke-0.4.4.3-win-x64.zip'
+./scripts/publish-local.ps1 -Tag v0.4.4.3-beta -ArchivePath 'C:/path/Liraoke-0.4.4.3-win-x64.zip' -Platform Gitee
+```
+
+Same-named assets are replaced. Both platforms receive the same bytes and checksum.
+GitHub uploads use the release `upload_url` and binary request body, as documented
+at https://docs.github.com/en/rest/releases/assets. Existing CI stays enabled.
+
+## Local upload to Gitee
+
+Use PowerShell 7.4+ (`pwsh`). GitHub Secrets are not available locally: the script
+uses the process environment variable `GITEE_TOKEN`, or prompts for a masked PAT.
+The PAT must have project/repository access to `harubilira/liraoke`. Never commit
+the token. The tag must already exist on Gitee. Stop any concurrent CI publication
+for the same release first; same-named attachments will be replaced.
+
+For historical releases, download the portable ZIP and SHA256 file from GitHub
+and upload the identical files (not the automatically generated source archive):
+
+```powershell
+./scripts/publish-gitee-local.ps1 -Tag v0.4.4.3-beta -ArchivePath 'C:/Downloads/Liraoke-0.4.4.3-win-x64.zip'
+```
+
+An adjacent `.sha256` file is verified if present, otherwise generated.
+For future releases, build locally with Windows, Git and .NET 10 SDK installed:
+
+```powershell
+./scripts/publish-gitee-local.ps1 -Tag v0.5.0.0 -Build
+```
+
+Build mode requires a clean working tree at the requested tag, matching project
+version, and these publishing scripts present at that tag. It runs media bootstrap
+and packaging, not tests; complete release testing first. Local upload reuses the
+CI API client and changes only the network origin. Verify the final attachments
+on Gitee. Existing GitHub workflows remain enabled.
 
 ## Security and behavior
 

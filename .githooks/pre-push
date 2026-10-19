@@ -1,0 +1,2 @@
+#!/bin/sh
+exec pwsh -NoLogo -NoProfile -File scripts/pre-push-release.ps1 "$1" "$2"
