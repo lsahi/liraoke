@@ -22,7 +22,7 @@ foreach ($update in $updates) {
     $sha = $fields[1]
     $xmlText = git -C $root show "${sha}:src/KaraokeFilmMaker.App/KaraokeFilmMaker.App.csproj"
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read pushed project version.' }
-    $project = [xml]($xmlText -join "`n")
+    $project = [xml](($xmlText -join "`n").TrimStart([char]0xFEFF))
     $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
     if ($version -notmatch '^\d+(\.\d+){2,3}$') { throw "Unsupported project version: $version" }
     $tag = "v$version-local.$($sha.Substring(0,12))"
