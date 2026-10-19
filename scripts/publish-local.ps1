@@ -33,7 +33,8 @@ if ($PSCmdlet.ParameterSetName -eq 'Build') {
     $localManifest = Join-Path $root 'scripts/media-toolchain.json'
     $tagManifest = Join-Path $buildRoot 'scripts/media-toolchain.json'
     if ((Test-Path $localManifest) -and (Test-Path $tagManifest) -and
-        (Get-FileHash $localManifest).Hash -eq (Get-FileHash $tagManifest).Hash -and
+        ((Get-Content $localManifest -Raw | ConvertFrom-Json).sha256 -eq
+         (Get-Content $tagManifest -Raw | ConvertFrom-Json).sha256) -and
         (Test-Path "$root/tools/ffmpeg/ffmpeg-8.1.2-essentials_build/bin/ffmpeg.exe")) {
         Write-Host 'Reusing installed FFmpeg with matching toolchain manifest.'
         New-Item -ItemType Directory -Path "$buildRoot/tools" -Force | Out-Null
