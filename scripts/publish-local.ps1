@@ -17,8 +17,15 @@ if ($PSCmdlet.ParameterSetName -eq 'Build') {
     $sourceArchive = "$buildRoot.tar"
     git -C $root archive --format=tar -o $sourceArchive $commit
     if ($LASTEXITCODE -ne 0) { throw 'Could not export release sources.' }
-    tar -xf $sourceArchive -C $buildRoot
-    if ($LASTEXITCODE -ne 0) { throw 'Could not extract release sources.' }
+    # Git for Windows puts GNU tar on PATH; a drive-letter path is interpreted
+    # as a remote archive by GNU tar. Relative paths work with both tar variants.
+    Push-Location $root
+    try {
+        $relativeArchive = [IO.Path]::GetRelativePath($root, $sourceArchive).Replace('\', '/')
+        $relativeBuild = [IO.Path]::GetRelativePath($root, $buildRoot).Replace('\', '/')
+        tar -xf $relativeArchive -C $relativeBuild
+        if ($LASTEXITCODE -ne 0) { throw 'Could not extract release sources.' }
+    } finally { Pop-Location }
     $project = [xml](Get-Content -LiteralPath "$buildRoot/src/KaraokeFilmMaker.App/KaraokeFilmMaker.App.csproj")
     $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
     if (($Tag -replace '^v', '' -replace '-.*$', '') -ne $version) { throw 'Tag and project version do not match.' }
