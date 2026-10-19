@@ -150,7 +150,7 @@ if ($volumeInstructions) {
     $body = $body -replace '(?s)\s*<!-- liraoke-volumes:start -->.*?<!-- liraoke-volumes:end -->', ''
     $body += "`n`n<!-- liraoke-volumes:start -->`n$volumeInstructions`n<!-- liraoke-volumes:end -->"
     Invoke-GiteeRequest -Method Patch -Uri "$apiRoot/releases/$($release.id)" -Headers $headers `
-        -ContentType 'application/json' -Body (@{body=$body} | ConvertTo-Json) | Out-Null
+        -ContentType 'application/json' -Body (@{body=$body; tag_name=$Tag; name=$release.name} | ConvertTo-Json) | Out-Null
 }
 $existingAttachments = @(
     Invoke-GiteeRequest `
