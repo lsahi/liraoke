@@ -41,12 +41,12 @@
         <Border Padding="16,10" Background="#FFFFFF" BorderBrush="#EFE8D4" BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="True">
                 <WrapPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,8,0,0">
-                    <Button Padding="12,7" Margin="4,2" Click="UndoProjectButton_Click" Content="撤销" />
-                    <Button x:Name="RestartRecordingButton" Padding="12,7" Margin="4,2" Click="RestartRecording_Click" Content="重新打轴" ToolTip="确认后清空整首歌词时间点，保留歌词文字与读音修改。" />
                     <Button x:Name="NewWorkspaceButton" Padding="12,7" Margin="4,2"
                             Click="NewWorkspaceButton_Click" Content="新建工作区" />
                     <Button x:Name="OpenWorkspaceButton" Padding="12,7" Margin="4,2"
                             Click="OpenWorkspaceButton_Click" Content="打开工作区" />
+                    <Button x:Name="MakeAccompanimentButton" Padding="12,7" Margin="4,2" Click="VocalSeparation_Click" Content="制作伴奏" ToolTip="为当前歌曲制作并关联伴奏；不替换歌曲或改变打轴。" />
+                    <Button Padding="12,7" Margin="4,2" Click="UndoProjectButton_Click" Content="撤销" />
                     <Button x:Name="SaveWorkspaceButton" Padding="12,7" Margin="4,2"
                             Click="SaveWorkspaceButton_Click" Content="保存" IsEnabled="False" />
                     <Button x:Name="OpenAudioButton" Visibility="Collapsed" Padding="12,7" Margin="4,2"
@@ -135,6 +135,8 @@
             </Grid>
             <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="#FAFCFD" />
             <Border x:Name="PreviewSettingsPanel" Grid.Column="4" Background="White" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
+              <TabControl x:Name="PreviewInspectorTabs" Background="White" BorderThickness="0">
+               <TabItem Header="节拍器">
                 <ScrollViewer x:Name="PreviewSettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                   <StackPanel>
                     <DockPanel Margin="0,0,0,8">
@@ -209,6 +211,31 @@
                     </Expander>
                   </StackPanel>
                 </ScrollViewer>
+               </TabItem>
+               <TabItem Header="伴奏">
+                <CheckBox x:Name="AccompanimentPreviewCheck" Content="伴奏" Margin="8,20" VerticalAlignment="Top"
+                          IsEnabled="False" Click="AccompanimentPreview_Click" ToolTipService.ShowOnDisabled="True"
+                          AutomationProperties.Name="预览伴奏开关">
+                  <CheckBox.Template><ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                      <Grid Width="46" Height="26" Margin="0,0,12,0">
+                        <Border x:Name="Track" Background="#DAE3E8" CornerRadius="13" />
+                        <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="White" Margin="3" HorizontalAlignment="Left" />
+                      </Grid>
+                      <TextBlock x:Name="SwitchLabel" Text="伴奏 · 关" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsChecked" Value="True">
+                        <Setter TargetName="Track" Property="Background" Value="#80C8E6" />
+                        <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                        <Setter TargetName="SwitchLabel" Property="Text" Value="伴奏 · 开" />
+                      </Trigger>
+                      <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate></CheckBox.Template>
+                </CheckBox>
+               </TabItem>
+              </TabControl>
             </Border>
            </Grid>
           </TabItem>
@@ -286,6 +313,7 @@
                 </Border>
                 <WrapPanel Grid.Row="1" Margin="0,8,0,0">
                     <Button Click="PlayPauseButton_Click" Content="播放 / 暂停（P）" Margin="0,0,6,4" />
+                    <Button x:Name="RestartRecordingButton" Click="RestartRecording_Click" Content="重新打轴" Margin="0,0,6,4" ToolTip="确认后清空整首歌词时间点，保留歌词文字与读音修改。" />
                     <Button Click="PreRollButton_Click" Content="提前 3 秒进入" Margin="0,0,6,4" />
                     <Button x:Name="LoopLineButton" Click="LoopLineButton_Click" Content="循环选中歌词行" Margin="0,0,6,4" />
                     <Button Click="ApplyCurrentMarkersButton_Click" Content="结束本句 / 应用（Enter）" Background="#F0F9FD" Margin="0,0,6,4" />
@@ -314,7 +342,6 @@
                         <WrapPanel Margin="0,0,0,8">
                             <TextBox x:Name="MarkerTimeText" Width="85" Text="0" Margin="0,0,6,0" />
                             <Button Click="UpdateMarkerButton_Click" Content="改选中点（秒）" Padding="6" />
-                            <Button x:Name="RestartRecordingFromTimingButton" Click="RestartRecording_Click" Content="重新打轴" Padding="6" ToolTip="确认后清空整首歌词时间点，保留歌词文字与读音修改。" />
                         </WrapPanel>
                         <Button Click="UndoMarkerButton_Click" Content="回退一个单元（退格）" Margin="0,0,0,6" />
                         <Button Click="ClearMarkersButton_Click" Content="清空本次时间点" />

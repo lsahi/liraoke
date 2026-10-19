@@ -75,11 +75,15 @@ public sealed class RecordingProgressTests
     });
 
     [Fact]
-    public Task BothFormerRedoButtonsNowOfferWholeSongRestart() => RunSta(context =>
+    public Task WholeSongRestartIsSecondInTimingTransportOnly() => RunSta(context =>
     {
         var window = context.Open(Project("春风"));
         Assert.Equal("重新打轴", ((Button)window.FindName("RestartRecordingButton")).Content);
-        Assert.Equal("重新打轴", ((Button)window.FindName("RestartRecordingFromTimingButton")).Content);
+        Assert.Null(window.FindName("RestartRecordingFromTimingButton"));
+        var button = (Button)window.FindName("RestartRecordingButton");
+        var panel = Assert.IsType<WrapPanel>(button.Parent);
+        Assert.Same(button, panel.Children[1]);
+        Assert.Contains("播放", ((Button)panel.Children[0]).Content.ToString());
     });
 
     [Theory]

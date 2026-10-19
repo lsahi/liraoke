@@ -1,5 +1,10 @@
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
+$cpuMarker = Join-Path $repoRoot 'tools/demucs/cpu/runtime.json'
+if (-not (Test-Path -LiteralPath $cpuMarker)) {
+    & (Join-Path $PSScriptRoot 'bootstrap-demucs.ps1')
+    if (-not (Test-Path -LiteralPath $cpuMarker)) { throw 'CPU separation runtime is incomplete; publishing refused.' }
+}
 $project = Join-Path $repoRoot 'src/KaraokeFilmMaker.App/KaraokeFilmMaker.App.csproj'
 $projectXml = [xml](Get-Content -LiteralPath $project)
 $version = $projectXml.SelectSingleNode('/Project/PropertyGroup/Version').InnerText

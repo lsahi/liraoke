@@ -7,13 +7,14 @@ using KaraokeFilmMaker.Domain.Projects;
 using KaraokeFilmMaker.Domain.Time;
 using KaraokeFilmMaker.Infrastructure.Media;
 using KaraokeFilmMaker.Infrastructure.Workspaces;
+using KaraokeFilmMaker.Infrastructure.Separation;
 
 namespace KaraokeFilmMaker.Infrastructure.Audio;
 
 public sealed class ProjectAudioComposer(MediaToolchain tools)
 {
     public async Task<string> PrepareAsync(string workspacePath, KaraokeProject project, double rate = 1,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool accompaniment = false)
     {
         if (rate is not (0.5 or 0.75 or 1))
         {
@@ -23,6 +24,9 @@ public sealed class ProjectAudioComposer(MediaToolchain tools)
         var master = project.MediaAssets.FirstOrDefault(asset => asset.Id == project.MasterAudioAssetId)
             ?? throw new InvalidOperationException("请先导入主歌曲音轨。");
         string masterPath = WorkspacePaths.AssetPath(workspacePath, master);
+        Accompaniment? alternative = accompaniment ? project.GetAccompaniment(master.Id)
+            ?? throw new InvalidOperationException("当前歌曲尚未生成伴奏，请先制作伴奏。") : null;
+        if (alternative is not null) masterPath = AccompanimentStore.Resolve(workspacePath, alternative);
         var reader = new FfprobeMediaReader(tools);
         if (!(await reader.ReadDetailsAsync(masterPath, cancellationToken).ConfigureAwait(false)).HasAudio)
         {
@@ -38,6 +42,7 @@ public sealed class ProjectAudioComposer(MediaToolchain tools)
         var identity = new
         {
             Master = master,
+            Accompaniment = alternative,
             MasterWrite = File.GetLastWriteTimeUtc(masterPath),
             Clips = enabled,
             Files = assets.Select(asset => new { Asset = asset, Write = File.GetLastWriteTimeUtc(WorkspacePaths.AssetPath(workspacePath, asset)) }),
@@ -63,6 +68,8 @@ public sealed class ProjectAudioComposer(MediaToolchain tools)
         {
             var clip = enabled[index];
             string source = WorkspacePaths.AssetPath(workspacePath, assets[index]);
+            // Reuse the separated source for shifted/cut clips of the original song too.
+            if (alternative is not null && assets[index].Id == master.Id) source = masterPath;
             if (!(await reader.ReadDetailsAsync(source, cancellationToken).ConfigureAwait(false)).HasAudio)
             {
                 continue;

@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         NextRecordingLine.UnitSelected += RecordingUnitSelected;
         RefreshMetronomeFields();
         RefreshWorkAreaFields();
+        RefreshAccompanimentState();
         ProjectTimeline.SeekRequested += TimelineSeekRequested;
         ProjectTimeline.EditRequested += TimelineEditRequested;
         ProjectTimeline.ClipSelected += id => VideoGrid.SelectedItem = _videoRows.FirstOrDefault(row => row.Id == id);
@@ -593,6 +594,7 @@ public partial class MainWindow : Window
 
     private void RefreshWorkspaceDisplay()
     {
+        RefreshAccompanimentState();
         RefreshMediaLibrary();
         if (_workspace is null)
         {
@@ -686,6 +688,7 @@ public partial class MainWindow : Window
         try
         {
             _isBusy = true;
+            RefreshAccompanimentState();
             RefreshWorkAreaAvailability();
             RefreshExportFormatAvailability();
             PlaybackRateCombo.IsEnabled = false;
@@ -706,7 +709,8 @@ public partial class MainWindow : Window
             await SynchronizeMetronomeAsync();
             if (_workspace is not null) { await PrepareAudioVisualizationAsync(_workspace.Project); }
             if (before is not null && _workspace is not null && before.Project.Id == _workspace.Project.Id
-                && _playback.IsPlaying && !before.Project.VideoClips.SequenceEqual(_workspace.Project.VideoClips))
+                  && _playback.IsPlaying && (!before.Project.VideoClips.SequenceEqual(_workspace.Project.VideoClips)
+                      || !before.Project.Accompaniments.SequenceEqual(_workspace.Project.Accompaniments)))
             {
                 string result = StatusText.Text;
                 await PrepareProjectPlaybackAsync();
@@ -715,7 +719,8 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "操作已取消，不完整输出已清理。";
+            StatusText.Text = _cancelledExportSummary ?? "操作已取消，不完整输出已清理。";
+            _cancelledExportSummary = null;
         }
         catch (Exception exception)
         {
@@ -728,6 +733,7 @@ public partial class MainWindow : Window
             // A completed in-memory edit must remain undoable even if a subsequent disk save fails.
             RecordHistory(before);
             _isBusy = false;
+            RefreshAccompanimentState();
             if (before?.Project.Id != _workspace?.Project.Id || before?.Project.WorkArea != _workspace?.Project.WorkArea
                 || before?.Project.MasterAudioAssetId != _workspace?.Project.MasterAudioAssetId)
             { RefreshWorkAreaFields(); }

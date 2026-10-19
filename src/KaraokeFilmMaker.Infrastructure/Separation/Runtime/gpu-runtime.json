@@ -1,0 +1,9 @@
+{
+  "id": "demucs-4.1-torch-2.8-cu128-v1",
+  "torchVersion": "2.8.0+cu128",
+  "wheelUrl": "https://download.pytorch.org/whl/cu128/torch-2.8.0%2Bcu128-cp312-cp312-win_amd64.whl",
+  "wheelSha256": "0ad925202387f4e7314302a1b4f8860fa824357f9b1466d7992bf276370ebcff",
+  "wheelBytes": 3461384651,
+  "temporarySpaceBytes": 12884901888,
+  "licenseUrl": "https://docs.nvidia.com/cuda/eula/"
+}

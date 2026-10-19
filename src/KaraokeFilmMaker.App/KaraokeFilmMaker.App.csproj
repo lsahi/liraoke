@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.4.4.3</Version>
+    <Version>0.4.5.1</Version>
     <AssemblyName>Liraoke</AssemblyName>
     <RootNamespace>KaraokeFilmMaker.App</RootNamespace>
     <Title>莉拉OK! / Liraoke</Title>
@@ -32,6 +32,9 @@
     <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\LICENSE" Link="tools\ffmpeg\LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\scripts\media-toolchain.json" Link="tools\ffmpeg\media-toolchain.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\THIRD_PARTY_NOTICES.txt" Link="THIRD_PARTY_NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\KaraokeFilmMaker.Infrastructure\Separation\Runtime\demucs-worker.py" Link="tools\demucs\demucs-worker.py" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\demucs\cpu\**\*" Link="tools\demucs\cpu\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\demucs\model\**\*" Link="tools\demucs\model\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

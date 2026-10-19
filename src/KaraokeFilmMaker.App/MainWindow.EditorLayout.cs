@@ -13,12 +13,14 @@ public partial class MainWindow
     private bool IsPreviewMode => EditorTabs.SelectedItem == PreviewTab;
     private bool _syncingLyricSelection;
 
-    private void EditorTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void EditorTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.Source != EditorTabs || !IsInitialized || SharedMonitor is null) { return; }
         if (EditorTabs.SelectedItem != LyricSourceTab && !CanLeaveSourceLyricEdit())
         { EditorTabs.SelectedItem = LyricSourceTab; return; }
         UpdateEditorMode();
+        if (_previewAccompaniment && _playback.IsLoaded && !_isBusy)
+            await RunUiOperationAsync(() => PrepareProjectPlaybackAsync());
     }
 
     private void UpdateEditorMode()

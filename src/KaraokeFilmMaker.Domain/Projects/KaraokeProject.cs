@@ -46,10 +46,16 @@ public sealed record KaraokeProject(
     int VideoTrackCount = 1,
     MetronomeSettings? Metronome = null)
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
     public const int MaximumVideoTracks = 1;
 
     public bool AudioVisualizationEnabled { get; init; }
+    // Only successfully generated full-song files are registered. They are not library assets.
+    public IReadOnlyList<Accompaniment> Accompaniments { get; init; } = [];
+
+    public Accompaniment? GetAccompaniment(Guid? sourceId) => Accompaniments.FirstOrDefault(item =>
+        item.SourceAssetId == sourceId && MediaAssets.Any(source => source.Id == sourceId
+            && source.ContentHash == item.SourceContentHash && source.Duration == item.Duration));
     public AudioVisualizationStyle AudioVisualizationStyle { get; init; } = AudioVisualizationStyle.Classic;
 
     // Non-destructive output range in original project time. Null means the full song.

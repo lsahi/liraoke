@@ -19,4 +19,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Separation\Runtime\gpu-runtime.json" />
+  </ItemGroup>
+
 </Project>

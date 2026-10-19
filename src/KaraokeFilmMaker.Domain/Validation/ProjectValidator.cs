@@ -22,6 +22,25 @@ public static class ProjectValidator
         }
 
         HashSet<Guid> assetIds = project.MediaAssets.Select(asset => asset.Id).ToHashSet();
+        if (project.Accompaniments is null)
+        { errors.Add("Accompaniment mappings cannot be null."); }
+        else
+        {
+            if (project.Accompaniments.Select(item => item.SourceAssetId).Distinct().Count() != project.Accompaniments.Count)
+            { errors.Add("Each original song may have only one current accompaniment."); }
+            foreach (var item in project.Accompaniments)
+            {
+                string path = item.RelativePath?.Replace('\\', '/') ?? "";
+                var source = project.MediaAssets.FirstOrDefault(asset => asset.Id == item.SourceAssetId);
+                if (!path.StartsWith("accompaniments/", StringComparison.Ordinal) || path.Contains(':')
+                    || path.Split('/').Any(segment => segment is ".." or "." or "")
+                    || !path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+                { errors.Add("Accompaniment must reference a portable WAV in accompaniments/."); }
+                if (source is null || source.Kind == Media.MediaKind.Image || source.Duration != item.Duration
+                    || source.ContentHash != item.SourceContentHash || item.Duration.Microseconds <= 0)
+                { errors.Add("Accompaniment references an invalid or changed source song."); }
+            }
+        }
         if (project.WorkArea is { } area)
         {
             var master = project.MediaAssets.FirstOrDefault(asset => asset.Id == project.MasterAudioAssetId);

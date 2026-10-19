@@ -40,6 +40,21 @@ if ($PSCmdlet.ParameterSetName -eq 'Build') {
         New-Item -ItemType Directory -Path "$buildRoot/tools" -Force | Out-Null
         Copy-Item -LiteralPath "$root/tools/ffmpeg" -Destination "$buildRoot/tools/ffmpeg" -Recurse
     }
+    $demucsMarker = "$root/tools/demucs/cpu/runtime.json"
+    $sameDemucsRecipe = Test-Path -LiteralPath $demucsMarker
+    foreach ($relative in @('scripts/bootstrap-demucs.ps1', 'scripts/demucs-requirements.txt', 'scripts/prepare-demucs-runtime.py', 'src/KaraokeFilmMaker.Infrastructure/Separation/Runtime/demucs-worker.py')) {
+        if (-not (Test-Path "$root/$relative") -or -not (Test-Path "$buildRoot/$relative")) { $sameDemucsRecipe = $false; break }
+        if ((Get-Content "$root/$relative" -Raw).Replace("`r`n", "`n") -ne (Get-Content "$buildRoot/$relative" -Raw).Replace("`r`n", "`n")) { $sameDemucsRecipe = $false; break }
+    }
+    if ($sameDemucsRecipe) {
+        Write-Host 'Reusing local CPU separation runtime with matching build recipe; running inference self-test.'
+        Copy-Item -LiteralPath "$root/tools/demucs" -Destination "$buildRoot/tools/demucs" -Recurse
+        $runtime = Get-Content "$buildRoot/tools/demucs/cpu/runtime.json" -Raw | ConvertFrom-Json
+        $model = "$buildRoot/tools/demucs/model/955717e8.safetensors"
+        if ((Get-FileHash $model -Algorithm SHA256).Hash -ne $runtime.ModelSha256) { throw 'Cached separation model hash mismatch.' }
+        & "$buildRoot/tools/demucs/cpu/python.exe" -I -X utf8 "$buildRoot/src/KaraokeFilmMaker.Infrastructure/Separation/Runtime/demucs-worker.py" --model $model --model-sha256 $runtime.ModelSha256 --device cpu --expected-torch $runtime.TorchVersion --self-test
+        if ($LASTEXITCODE -ne 0) { throw 'Cached CPU runtime self-test failed.' }
+    }
     Push-Location $buildRoot
     try {
         & "$buildRoot/scripts/bootstrap-media.ps1"

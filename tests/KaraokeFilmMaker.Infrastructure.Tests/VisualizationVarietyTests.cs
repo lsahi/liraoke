@@ -151,7 +151,7 @@ public sealed class VisualizationVarietyTests
             await repository.SaveAsync(root, project);
             var loaded = await repository.LoadAsync(root);
             Assert.Equal(style, loaded.AudioVisualizationStyle); Assert.True(loaded.AudioVisualizationEnabled);
-            Assert.Equal(8, loaded.SchemaVersion);
+            Assert.Equal(KaraokeProject.CurrentSchemaVersion, loaded.SchemaVersion);
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
             var json = JsonSerializer.SerializeToNode(project, options)!.AsObject();
@@ -161,7 +161,7 @@ public sealed class VisualizationVarietyTests
             await File.WriteAllTextAsync(path, json.ToJsonString());
             var legacy = await repository.LoadAsync(root);
             Assert.Equal(AudioVisualizationStyle.Classic, legacy.AudioVisualizationStyle);
-            Assert.True(legacy.AudioVisualizationEnabled); Assert.Equal(8, legacy.SchemaVersion);
+            Assert.True(legacy.AudioVisualizationEnabled); Assert.Equal(KaraokeProject.CurrentSchemaVersion, legacy.SchemaVersion);
             Assert.Equal(project.Id, legacy.Id);
         }
         finally { if (Directory.Exists(root)) { Directory.Delete(root, true); } }

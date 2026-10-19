@@ -10,6 +10,7 @@ using KaraokeFilmMaker.Infrastructure.Export;
 using KaraokeFilmMaker.Infrastructure.Media;
 using Microsoft.Win32;
 using KaraokeFilmMaker.App.Dialogs;
+using KaraokeFilmMaker.Application.Separation;
 
 namespace KaraokeFilmMaker.App;
 
@@ -29,8 +30,11 @@ public partial class MainWindow
         }
 
         var project = _workspace.Project;
+        RefreshAccompanimentState();
+        bool accompaniment = UsePreviewAccompaniment;
         var master = project.MediaAssets.First(asset => asset.Id == masterId);
-        string key = JsonSerializer.Serialize(new { Master = masterId, project.MediaAssets, project.VideoClips, Rate = _playbackRate });
+        string key = JsonSerializer.Serialize(new { Master = masterId, project.MediaAssets, project.VideoClips,
+            Accompaniment = accompaniment ? project.GetAccompaniment(masterId) : null, Rate = _playbackRate });
         if (!force && key == _preparedPlaybackKey && _playback.IsLoaded)
         {
             return;
@@ -41,7 +45,7 @@ public partial class MainWindow
         if (_playback.IsPlaying) { await _playback.PauseAsync(); }
         StatusText.Text = "正在准备歌曲、视频原声和播放缓存…";
         string wave = await new ProjectAudioComposer(_mediaTools).PrepareAsync(_workspace.RootPath, project, _playbackRate,
-            _operationCancellation?.Token ?? CancellationToken.None);
+            _operationCancellation?.Token ?? CancellationToken.None, accompaniment: accompaniment);
         await ((ScaledAudioPlaybackSession)_playback).LoadPreparedAsync(wave, master.Duration, _playbackRate);
         await SynchronizeMetronomeAsync();
         await _playback.SeekAsync(position);
@@ -52,7 +56,7 @@ public partial class MainWindow
         VideoPreview.SpeedRatio = _playbackRate;
         string normalWave = _playbackRate == 1 ? wave
             : await new ProjectAudioComposer(_mediaTools).PrepareAsync(_workspace.RootPath, project,
-                cancellationToken: _operationCancellation?.Token ?? CancellationToken.None);
+                cancellationToken: _operationCancellation?.Token ?? CancellationToken.None, accompaniment: accompaniment);
         var waveform = await new WaveformCache().GetAsync(normalWave, _workspace.RootPath,
             _operationCancellation?.Token ?? CancellationToken.None);
         ProjectTimeline.Waveform = waveform;
@@ -80,19 +84,27 @@ public partial class MainWindow
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
         if (_workspace is null || _isBusy) { return; }
-        if (_markers.Count > 0)
+        if (!CanLeaveSourceLyricEdit() || !CanLeaveQuickEdit()) return;
+        if (_markers.Count > 0 || _undoneMarkers.Count > 0)
         {
             EditorTabs.SelectedItem = RecordingTab;
             StatusText.Text = "还有未应用的内存打点。请完成当前句并按 Enter 确认结束点后再导出，避免遗漏刚录制的时间。";
             return;
         }
+        var versionsDialog = new ExportVersionsWindow(HasCurrentAccompaniment) { Owner = this };
+        if (versionsDialog.ShowDialog() != true) return;
         var dialog = new SaveFileDialog
         {
-            Title = "导出完整卡拉 OK 视频", Filter = "MP4 视频 (*.mp4)|*.mp4",
-            FileName = _workspace.Project.Title + ".mp4", AddExtension = true, OverwritePrompt = true,
+            Title = "选择导出文件名（自动追加版本后缀）", Filter = "MP4 视频 (*.mp4)|*.mp4",
+            FileName = _workspace.Project.Title + ".mp4", AddExtension = true, OverwritePrompt = false,
         };
         if (!_dialogLocations.ShowDialog(dialog, DialogLocation.ExportVideo, this,
             System.IO.Path.Combine(_workspace.RootPath, "exports"))) { return; }
+        var versions = AudioExportVersions.Create(dialog.FileName, versionsDialog.OriginalCheck.IsChecked == true,
+            versionsDialog.AccompanimentCheck.IsEnabled && versionsDialog.AccompanimentCheck.IsChecked == true);
+        var existing = versions.Where(item => System.IO.File.Exists(item.Path)).ToArray();
+        if (existing.Length > 0 && MessageBox.Show(this, "以下文件已存在，是否覆盖？\n\n" + string.Join("\n", existing.Select(item => item.Path)),
+            "确认覆盖导出", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
         await RunUiOperationAsync(async () =>
         {
             ApplyLyricRowsToProject();
@@ -100,16 +112,41 @@ public partial class MainWindow
             ApplySubtitleStyleFields();
             ApplyExportPreset();
             if (_playback.IsPlaying) { await _playback.PauseAsync(); }
-            var progress = new Progress<ExportProgress>(value =>
+            for (int index = 0; index < versions.Count; index++)
             {
-                OperationProgress.Value = value.Fraction * 100;
-                StatusText.Text = $"{value.Message} · {value.Fraction:P0}";
-            });
-            await new VideoExportService(_mediaTools).ExportAsync(_workspace.RootPath, _workspace.Project, dialog.FileName,
-                progress, _operationCancellation!.Token);
-            StatusText.Text = $"完整视频已导出：{dialog.FileName}";
+                var version = versions[index]; int ordinal = index;
+                string label = version.Accompaniment ? "伴奏" : "原唱";
+                bool reporting = true;
+                var progress = new Progress<ExportProgress>(value =>
+                {
+                    if (!reporting) return;
+                    OperationProgress.Value = (ordinal + value.Fraction) / versions.Count * 100;
+                    StatusText.Text = $"{label} {ordinal + 1}/{versions.Count} · {value.Message} · {value.Fraction:P0}";
+                });
+                try
+                {
+                    await new VideoExportService(_mediaTools).ExportAsync(_workspace.RootPath, _workspace.Project, version.Path,
+                        progress, _operationCancellation!.Token, accompaniment: version.Accompaniment);
+                }
+                catch (OperationCanceledException)
+                {
+                    _cancelledExportSummary = index == 0 ? "导出已取消，不完整输出已清理。"
+                        : "导出已取消；已完成的版本保留：" + string.Join("；", versions.Take(index).Select(item => item.Path));
+                    throw;
+                }
+                catch (Exception exception) when (index > 0)
+                {
+                    throw new InvalidOperationException($"{label}导出失败：{exception.Message}\n已完成的版本保留："
+                        + string.Join("；", versions.Take(index).Select(item => item.Path)), exception);
+                }
+                finally { reporting = false; }
+            }
+            OperationProgress.Value = 100;
+            StatusText.Text = "已导出：" + string.Join("；", versions.Select(item => item.Path));
         });
     }
+
+    private string? _cancelledExportSummary;
 
     private void ApplyExportPreset()
     {

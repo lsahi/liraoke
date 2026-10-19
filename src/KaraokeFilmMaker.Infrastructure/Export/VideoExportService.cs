@@ -17,7 +17,7 @@ public sealed record ExportProgress(double Fraction, string Message);
 public sealed class VideoExportService(MediaToolchain tools)
 {
     public async Task ExportAsync(string workspacePath, KaraokeProject project, string outputPath,
-        IProgress<ExportProgress>? progress = null, CancellationToken cancellationToken = default)
+        IProgress<ExportProgress>? progress = null, CancellationToken cancellationToken = default, bool accompaniment = false)
     {
         IReadOnlyList<string> errors = ProjectValidator.Validate(project);
         if (errors.Count > 0)
@@ -50,7 +50,8 @@ public sealed class VideoExportService(MediaToolchain tools)
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
         string temporary = Path.Combine(Path.GetDirectoryName(outputPath)!, $".{Path.GetFileNameWithoutExtension(outputPath)}-{Guid.NewGuid():N}.partial.mp4");
         progress?.Report(new ExportProgress(0, "准备主歌曲与视频原声混音"));
-        string audio = await new ProjectAudioComposer(tools).PrepareAsync(workspacePath, project, cancellationToken: cancellationToken).ConfigureAwait(false);
+        string audio = await new ProjectAudioComposer(tools).PrepareAsync(workspacePath, project,
+            cancellationToken: cancellationToken, accompaniment: accompaniment).ConfigureAwait(false);
         AudioVisualizationData? visualization = null;
         if (project.AudioVisualizationEnabled)
         {

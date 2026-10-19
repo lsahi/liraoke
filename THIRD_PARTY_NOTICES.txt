@@ -18,6 +18,23 @@ Build origin: https://www.gyan.dev/ffmpeg/builds/
 FFmpeg source: https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
 Build metadata: scripts/media-toolchain.json in the source workspace.
 
+Optional local vocal separation:
+Demucs 4.1.0: Meta Platforms, Inc. and contributors, MIT.
+https://github.com/adefossez/demucs
+Standard HTDemucs model: adefossez/HTDemucs, pinned revision
+cbc8a9b1a87023b7fd74e7b3412e6321c0eab003 (see model repository terms).
+https://huggingface.co/adefossez/HTDemucs
+Python 3.12: Python Software Foundation License, with bundled dependency notices.
+PyTorch 2.8.0: BSD-style license and third-party notices in torch-*.dist-info/licenses.
+https://github.com/pytorch/pytorch
+NumPy, SymPy, Demucs dependencies: original *.dist-info license files retained
+in tools/demucs/cpu/Lib/site-packages. Python notices retained in tools/demucs/cpu.
+GPU runtime is an optional user-initiated download from PyTorch's official index.
+NVIDIA CUDA/cuDNN components are NOT all open-source; their applicable terms and
+license notices remain with the downloaded binaries. System drivers are not bundled.
+https://docs.nvidia.com/cuda/eula/
+https://docs.nvidia.com/deeplearning/cudnn/backend/latest/reference/eula.html
+
 This is an internal MVP acceptance package, not a public-release distribution.
 Before public distribution, include the complete corresponding source and
 third-party license materials required by the selected binary builds.

@@ -26,6 +26,7 @@ public static class MediaAssetRemoval
         return project with
         {
             MediaAssets = project.MediaAssets.Where(asset => asset.Id != assetId).ToArray(),
+            Accompaniments = project.Accompaniments.Where(item => item.SourceAssetId != assetId).ToArray(),
             VideoClips = project.VideoClips.Where(clip => clip.MediaAssetId != assetId).ToArray(),
             MasterAudioAssetId = impact.IsMasterAudio ? null : project.MasterAudioAssetId,
             WorkArea = impact.IsMasterAudio ? null : project.WorkArea,
