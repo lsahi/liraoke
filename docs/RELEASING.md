@@ -1,5 +1,16 @@
 # Release automation
 
+Gitee limits each release attachment to 100 MB. The Gitee publisher splits ZIPs
+larger than 90,000,000 bytes into `.zip.001`, `.zip.002`, etc., with at most
+90,000,000 bytes per volume. GitHub keeps the original ZIP. The publisher verifies
+that concatenating all volumes reproduces the original SHA256 before uploading.
+Gitee includes per-volume checksums, the original ZIP checksum, and
+`GITEE-DOWNLOAD-INSTRUCTIONS.txt`; extraction instructions are also added to the
+release body. Download every volume into one directory and open `.zip.001` with
+7-Zip, or use the provided Windows cmd `copy /b` command to reconstruct the ZIP
+before extracting. Post-upload verification checks all expected attachment names
+and sizes. Do not interpret a partial upload as a completed release.
+
 ## Local master push hook
 
 The repository-local `core.hooksPath` can be set to `.githooks` to enable
