@@ -30,6 +30,15 @@ if ($PSCmdlet.ParameterSetName -eq 'Build') {
     $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
     if (($Tag -replace '^v', '' -replace '-.*$', '') -ne $version) { throw 'Tag and project version do not match.' }
     Write-Host "Building $Tag ($commit) in $buildRoot"
+    $localManifest = Join-Path $root 'scripts/media-toolchain.json'
+    $tagManifest = Join-Path $buildRoot 'scripts/media-toolchain.json'
+    if ((Test-Path $localManifest) -and (Test-Path $tagManifest) -and
+        (Get-FileHash $localManifest).Hash -eq (Get-FileHash $tagManifest).Hash -and
+        (Test-Path "$root/tools/ffmpeg/ffmpeg-8.1.2-essentials_build/bin/ffmpeg.exe")) {
+        Write-Host 'Reusing installed FFmpeg with matching toolchain manifest.'
+        New-Item -ItemType Directory -Path "$buildRoot/tools" -Force | Out-Null
+        Copy-Item -LiteralPath "$root/tools/ffmpeg" -Destination "$buildRoot/tools/ffmpeg" -Recurse
+    }
     Push-Location $buildRoot
     try {
         & "$buildRoot/scripts/bootstrap-media.ps1"
