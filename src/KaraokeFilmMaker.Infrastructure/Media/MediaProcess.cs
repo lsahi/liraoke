@@ -16,6 +16,9 @@ public static class MediaProcess
         {
             UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardError = true, RedirectStandardOutput = true,
+            // FFmpeg/ffprobe emit UTF-8 regardless of the Windows console/system code page.
+            // Decoding Japanese tags as GBK can consume a JSON closing quote.
+            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
             RedirectStandardInput = writeInput is not null,
         };
         foreach (string argument in arguments)

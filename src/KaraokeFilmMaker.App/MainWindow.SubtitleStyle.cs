@@ -6,6 +6,8 @@ using KaraokeFilmMaker.Application.Rendering;
 using KaraokeFilmMaker.Domain.Projects;
 using KaraokeFilmMaker.Domain.Validation;
 using KaraokeFilmMaker.Infrastructure.Rendering;
+using KaraokeFilmMaker.Infrastructure.Persistence;
+using KaraokeFilmMaker.Application.Preferences;
 
 namespace KaraokeFilmMaker.App;
 
@@ -14,9 +16,11 @@ public partial class MainWindow
     private bool _syncingRomanization;
     private bool _subtitleStyleEditorInitialized;
     private bool _syncingSubtitleStyleFields;
-    private readonly SubtitlePresetChoice[] _subtitlePresetChoices = new[] { new SubtitlePresetChoice("自定义 · 保留当前参数", null) }
+    private bool? _draftStyleRomanization;
+    private readonly UserPreferenceStore _userPreferenceStore;
+    private SubtitlePresetChoice[] _subtitlePresetChoices = new[] { new SubtitlePresetChoice("自定义 · 保留当前参数", null) }
         .Concat(SubtitleStylePresets.All.Select(preset => new SubtitlePresetChoice(preset.Name, preset))).ToArray();
-    private sealed record SubtitlePresetChoice(string Name, SubtitleStylePreset? Preset);
+    private sealed record SubtitlePresetChoice(string Name, SubtitleStylePreset? Preset, SavedSubtitleStyle? Saved = null);
 
     private void SubtitleStyleEditor_Loaded(object sender, RoutedEventArgs e) => InitializeSubtitleStyleEditor();
 
@@ -24,18 +28,12 @@ public partial class MainWindow
     {
         if (_subtitleStyleEditorInitialized) { return; }
         _subtitleStyleEditorInitialized = true;
+        ReloadUserStyles();
         _syncingSubtitleStyleFields = true;
         try
         {
             SubtitlePresetCombo.ItemsSource = _subtitlePresetChoices;
             SubtitleFontText.ItemsSource = SystemFontCatalog.Names;
-            string[] colors = ["#FFFFFFFF", "#FFFFD54F", "#FF24465F", "#FF000000", "#FF83CDE8", "#FFFFE59A", "#FF34424D"];
-            foreach (ComboBox combo in new[] { InactiveColorText, ActiveColorText, OutlineColorText, ActiveOutlineColorText })
-            {
-                string text = combo.Text;
-                combo.ItemsSource = colors;
-                combo.Text = text;
-            }
             SubtitleFontText.AddHandler(TextBoxBase.TextChangedEvent, new TextChangedEventHandler(SubtitleFontText_TextChanged));
         }
         finally { _syncingSubtitleStyleFields = false; }
@@ -80,7 +78,16 @@ public partial class MainWindow
 
     private void SubtitlePresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_syncingSubtitleStyleFields || SubtitlePresetCombo.SelectedItem is not SubtitlePresetChoice { Preset: { } preset }) { return; }
+        if (_syncingSubtitleStyleFields) return;
+        DeleteUserStyleButton.IsEnabled = SubtitlePresetCombo.SelectedItem is SubtitlePresetChoice { Saved: not null };
+        if (SubtitlePresetCombo.SelectedItem is SubtitlePresetChoice { Saved: { } saved })
+        {
+            PopulateSubtitleStyleFields(saved.Style, draft: true);
+            UserStyleNameText.Text = saved.Name;
+            StatusText.Text = "已载入自定义样式草稿，点击“应用字幕样式”后改变当前工程。";
+            return;
+        }
+        if (SubtitlePresetCombo.SelectedItem is not SubtitlePresetChoice { Preset: { } preset }) return;
         InactiveColorText.Text = preset.InactiveColor;
         ActiveColorText.Text = preset.ActiveColor;
         OutlineColorText.Text = preset.OutlineColor;
@@ -90,6 +97,7 @@ public partial class MainWindow
     }
     private void SetRomanizationChecks(bool value)
     {
+        _draftStyleRomanization = null;
         _syncingRomanization = true;
         try { ShowRomajiCheckBox.IsChecked = value; StyleShowRomajiCheckBox.IsChecked = value; }
         finally { _syncingRomanization = false; }
@@ -97,8 +105,9 @@ public partial class MainWindow
 
     private void ShowRomanizationChanged(object sender, RoutedEventArgs e)
     {
-        if (_syncingRomanization || _workspace is null || sender is not System.Windows.Controls.CheckBox check) { return; }
+        if (_syncingRomanization || sender is not System.Windows.Controls.CheckBox check) { return; }
         bool show = check.IsChecked == true;
+        if (_workspace is null) { _draftStyleRomanization = show; return; }
         var before = _workspace;
         _workspace = _workspace with { Project = _workspace.Project with
         { SubtitleStyle = _workspace.Project.SubtitleStyle with { ShowRomanization = show }, ModifiedAtUtc = DateTimeOffset.UtcNow } };
@@ -117,10 +126,22 @@ public partial class MainWindow
 
         SubtitleStyle style = _workspace.Project.SubtitleStyle;
         InitializeSubtitleStyleEditor();
+        PopulateSubtitleStyleFields(style);
+    }
+
+    private void PopulateSubtitleStyleFields(SubtitleStyle style, bool draft = false)
+    {
         _syncingSubtitleStyleFields = true;
         try
         {
-            SetRomanizationChecks(style.ShowRomanization);
+            if (draft)
+            {
+                _draftStyleRomanization = style.ShowRomanization;
+                _syncingRomanization = true;
+                try { StyleShowRomajiCheckBox.IsChecked = style.ShowRomanization; }
+                finally { _syncingRomanization = false; }
+            }
+            else SetRomanizationChecks(style.ShowRomanization);
             SubtitleFontText.ItemsSource = SystemFontCatalog.Names;
             SubtitleFontText.Text = style.FontFamily;
             PrimaryFontSizeText.Text = style.PrimaryFontSize.ToString(CultureInfo.CurrentCulture);
@@ -133,8 +154,11 @@ public partial class MainWindow
             ShadowOffsetText.Text = style.ShadowOffset.ToString(CultureInfo.CurrentCulture);
             LineGapText.Text = style.LineGap.ToString(CultureInfo.CurrentCulture);
             RegionMarginText.Text = (style.MarginRatio * 100).ToString(CultureInfo.CurrentCulture);
-            SubtitlePresetCombo.SelectedItem = _subtitlePresetChoices.FirstOrDefault(choice => choice.Preset?.ApplyTo(style) == style)
-                ?? _subtitlePresetChoices[0];
+            if (!draft)
+                SubtitlePresetCombo.SelectedItem = _subtitlePresetChoices.FirstOrDefault(choice => choice.Saved?.Style == style)
+                    ?? _subtitlePresetChoices.FirstOrDefault(choice => choice.Preset?.ApplyTo(style) == style)
+                    ?? _subtitlePresetChoices[0];
+            DeleteUserStyleButton.IsEnabled = SubtitlePresetCombo.SelectedItem is SubtitlePresetChoice { Saved: not null };
         }
         finally { _syncingSubtitleStyleFields = false; }
         RefreshSubtitleFontStatus(style.FontFamily);
@@ -147,20 +171,7 @@ public partial class MainWindow
             return;
         }
 
-        var style = _workspace.Project.SubtitleStyle with
-        {
-            FontFamily = SubtitleFontText.Text.Trim(),
-            PrimaryFontSize = ParseSize(PrimaryFontSizeText.Text, "主歌词字号"),
-            AnnotationFontSize = ParseSize(AnnotationFontSizeText.Text, "辅助行字号"),
-            InactiveColor = InactiveColorText.Text.Trim(),
-            ActiveColor = ActiveColorText.Text.Trim(),
-            OutlineColor = OutlineColorText.Text.Trim(),
-            ActiveOutlineColor = string.IsNullOrWhiteSpace(ActiveOutlineColorText.Text) ? null : ActiveOutlineColorText.Text.Trim(),
-            OutlineWidth = ParseSize(OutlineWidthText.Text, "描边宽度"),
-            ShadowOffset = ParseSize(ShadowOffsetText.Text, "阴影偏移"),
-            LineGap = ParseSize(LineGapText.Text, "辅助行间距"),
-            MarginRatio = ParseSize(RegionMarginText.Text, "区域边距") / 100,
-        };
+        var style = ReadSubtitleStyleFields();
         KaraokeProject updated = _workspace.Project with { SubtitleStyle = style };
         IReadOnlyList<string> errors = ProjectValidator.Validate(updated);
         if (errors.Count > 0)
@@ -169,6 +180,99 @@ public partial class MainWindow
         }
 
         _workspace = _workspace with { Project = updated with { ModifiedAtUtc = DateTimeOffset.UtcNow } };
+        SetRomanizationChecks(style.ShowRomanization);
+    }
+
+    private SubtitleStyle ReadSubtitleStyleFields()
+    {
+        var style = (_workspace?.Project.SubtitleStyle ?? KaraokeProject.Create("Style", DateTimeOffset.UnixEpoch).SubtitleStyle) with
+        {
+            ShowRomanization = _draftStyleRomanization ?? _workspace?.Project.SubtitleStyle.ShowRomanization ?? StyleShowRomajiCheckBox.IsChecked == true,
+            FontFamily = SubtitleFontText.Text.Trim(),
+            PrimaryFontSize = ParseSize(PrimaryFontSizeText.Text, "主歌词字号"),
+            AnnotationFontSize = ParseSize(AnnotationFontSizeText.Text, "辅助行字号"),
+            InactiveColor = InactiveColorText.ColorValue!,
+            ActiveColor = ActiveColorText.ColorValue!,
+            OutlineColor = OutlineColorText.ColorValue!,
+            ActiveOutlineColor = ActiveOutlineColorText.ColorValue,
+            OutlineWidth = ParseSize(OutlineWidthText.Text, "描边宽度"),
+            ShadowOffset = ParseSize(ShadowOffsetText.Text, "阴影偏移"),
+            LineGap = ParseSize(LineGapText.Text, "辅助行间距"),
+            MarginRatio = ParseSize(RegionMarginText.Text, "区域边距") / 100,
+        };
+        KaraokeProject updated = KaraokeProject.Create("Style validation", DateTimeOffset.UnixEpoch) with { SubtitleStyle = style };
+        IReadOnlyList<string> errors = ProjectValidator.Validate(updated);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
+        }
+
+        return style;
+    }
+
+    private void ReloadUserStyles(Guid? selected = null)
+    {
+        var preferences = new UserPreferences();
+        try
+        {
+            preferences = _userPreferenceStore.Load();
+            UserPreferenceStatusText.Text = "全局配置：user-preferences.json · 保存于程序目录，跨工程共用。";
+            UserPreferenceStatusText.ToolTip = _userPreferenceStore.FilePath;
+        }
+        catch (Exception e) when (e is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException)
+        {
+            UserPreferenceStatusText.Text = $"无法读取用户偏好：{e.Message} 内置样式仍可使用；不会自动覆盖原配置。";
+        }
+        _subtitlePresetChoices = new[] { new SubtitlePresetChoice("自定义 · 保留当前参数", null) }
+            .Concat(SubtitleStylePresets.All.Select(preset => new SubtitlePresetChoice(preset.Name, preset)))
+            .Concat(preferences.SubtitleStyles.Select(saved => new SubtitlePresetChoice("我的 · " + saved.Name, null, saved))).ToArray();
+        bool previous = _syncingSubtitleStyleFields;
+        _syncingSubtitleStyleFields = true;
+        try
+        {
+            SubtitlePresetCombo.ItemsSource = _subtitlePresetChoices;
+            SubtitlePresetCombo.SelectedItem = _subtitlePresetChoices.FirstOrDefault(choice => selected is not null && choice.Saved?.Id == selected)
+                ?? _subtitlePresetChoices[0];
+            DeleteUserStyleButton.IsEnabled = SubtitlePresetCombo.SelectedItem is SubtitlePresetChoice { Saved: not null };
+        }
+        finally { _syncingSubtitleStyleFields = previous; }
+    }
+
+    private void SaveNamedUserStyle(string name, bool overwrite)
+    {
+        var preferences = _userPreferenceStore.SaveStyle(name, ReadSubtitleStyleFields(), overwrite);
+        var saved = preferences.SubtitleStyles.Single(item => string.Equals(item.Name, name.Trim(), StringComparison.OrdinalIgnoreCase));
+        ReloadUserStyles(saved.Id);
+        StatusText.Text = $"已保存全局样式“{saved.Name}”；其他工程也可调用，当前工程尚未应用的参数保持草稿。";
+    }
+
+    private void SaveUserStyle_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string name = UserStyleNameText.Text.Trim();
+            bool exists = _userPreferenceStore.Load().SubtitleStyles.Any(item => string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (exists && MessageBox.Show(this, $"覆盖已保存的样式“{name}”？已使用该样式的工程不会被修改。",
+                "覆盖自定义样式", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
+            SaveNamedUserStyle(name, exists);
+        }
+        catch (Exception e1) when (e1 is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        { ShowPreferenceError(e1); }
+    }
+
+    private void DeleteUserStyle_Click(object sender, RoutedEventArgs e)
+    {
+        if (SubtitlePresetCombo.SelectedItem is not SubtitlePresetChoice { Saved: { } saved }) return;
+        if (MessageBox.Show(this, $"删除常用样式“{saved.Name}”？不会改变任何工程已应用的样式。",
+            "删除自定义样式", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
+        try { _userPreferenceStore.DeleteStyle(saved.Id); ReloadUserStyles(); StatusText.Text = "已删除常用样式，当前工程样式保持不变。"; }
+        catch (Exception e1) when (e1 is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException) { ShowPreferenceError(e1); }
+    }
+
+    private void ShowPreferenceError(Exception error)
+    {
+        UserPreferenceStatusText.Text = $"未能保存用户偏好：{error.Message} 请检查程序目录写入权限及配置文件；可将软件放到可写文件夹。原配置不会被清空。";
+        StatusText.Text = UserPreferenceStatusText.Text;
     }
 
     private static double ParseSize(string text, string field)

@@ -468,17 +468,24 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Margin="20" Loaded="SubtitleStyleEditor_Loaded">
                 <TextBlock Foreground="#5D707B" TextWrapping="Wrap" Margin="0,0,0,16"
-                           Text="固定双句布局：画面下方 30%，左上与右下交替。日语默认仅在汉字上方标假名；开启罗马音后改为在对应原文上方标罗马音。" />
+                           Text="底部双句布局：左上与右下交替，字幕区域随字号向上扩展，不再限制为下方 30%。日语默认在汉字上方标假名；开启罗马音后替代假名注音。" />
                 <CheckBox x:Name="StyleShowRomajiCheckBox" Content="显示日语罗马音（替代汉字假名注音，与打轴页同步）" Foreground="#34424D" Margin="0,0,0,14"
                           Checked="ShowRomanizationChanged" Unchecked="ShowRomanizationChanged" />
                 <WrapPanel>
                   <StackPanel Width="360" HorizontalAlignment="Left" Margin="0,0,20,14">
                     <TextBlock Foreground="#34424D" Text="字幕预设" Margin="0,0,0,6" />
                     <ComboBox x:Name="SubtitlePresetCombo" DisplayMemberPath="Name" Padding="8" SelectionChanged="SubtitlePresetCombo_SelectionChanged" />
-                    <TextBlock Foreground="#687782" TextWrapping="Wrap" Margin="0,6,0,0" Text="选择预设后可继续精调；点击“应用字幕样式”生效。字体、布局和注音开关保持不变。" />
+                    <TextBlock Foreground="#687782" TextWrapping="Wrap" Margin="0,6,0,0" Text="内置预设只改配色和描边；我的样式恢复全部参数。选择后可继续精调，点击“应用字幕样式”生效。" />
                   </StackPanel>
                   <Button x:Name="ApplySubtitleStyleButton" VerticalAlignment="Top" Margin="0,20,0,14" Padding="20,8" Click="ApplySubtitleStyleButton_Click" Content="应用字幕样式" />
                 </WrapPanel>
+                <WrapPanel Margin="0,0,0,8">
+                    <TextBlock Text="样式名称" VerticalAlignment="Center" Margin="0,0,8,6" />
+                    <TextBox x:Name="UserStyleNameText" Width="240" MaxLength="80" Padding="8" Margin="0,0,8,6" ToolTip="给当前参数起一个常用样式名称" />
+                    <Button x:Name="SaveUserStyleButton" Content="保存为我的样式" Click="SaveUserStyle_Click" Margin="0,0,8,6" Padding="12,8" />
+                    <Button x:Name="DeleteUserStyleButton" Content="删除所选样式" Click="DeleteUserStyle_Click" IsEnabled="False" Margin="0,0,0,6" Padding="12,8" />
+                </WrapPanel>
+                <TextBlock x:Name="UserPreferenceStatusText" Foreground="#687782" TextWrapping="Wrap" Margin="0,0,0,14" />
                 <WrapPanel>
                   <StackPanel Width="240" Margin="0,0,20,12">
                     <TextBlock Foreground="#34424D" Text="字体（输入名称搜索本机字体）" Margin="0,0,0,6" />
@@ -495,21 +502,21 @@
                 </WrapPanel>
                 <TextBlock x:Name="SubtitleFontStatusText" Foreground="#687782" TextWrapping="Wrap" Margin="0,0,0,12" />
                 <WrapPanel>
-                  <StackPanel Width="200" Margin="0,0,20,12">
+                  <StackPanel Width="240" Margin="0,0,20,12">
                     <TextBlock Foreground="#34424D" Text="未唱 · 文字颜色" Margin="0,0,0,6" />
-                    <ComboBox x:Name="InactiveColorText" IsEditable="True" Text="#FFFFFFFF" Padding="8" />
+                    <controls:ColorField x:Name="InactiveColorText" Text="#FFFFFFFF" />
                   </StackPanel>
-                  <StackPanel Width="200" Margin="0,0,20,12">
+                  <StackPanel Width="240" Margin="0,0,20,12">
                     <TextBlock Foreground="#34424D" Text="已唱 · 文字颜色" Margin="0,0,0,6" />
-                    <ComboBox x:Name="ActiveColorText" IsEditable="True" Text="#FFFFD54F" Padding="8" />
+                    <controls:ColorField x:Name="ActiveColorText" Text="#FFFFD54F" />
                   </StackPanel>
-                  <StackPanel Width="200" Margin="0,0,20,12">
+                  <StackPanel Width="240" Margin="0,0,20,12">
                     <TextBlock Foreground="#34424D" Text="未唱 · 描边颜色" Margin="0,0,0,6" />
-                    <ComboBox x:Name="OutlineColorText" IsEditable="True" Text="#FF24465F" Padding="8" />
+                    <controls:ColorField x:Name="OutlineColorText" Text="#FF24465F" />
                   </StackPanel>
-                  <StackPanel Width="200" Margin="0,0,20,12">
+                  <StackPanel Width="240" Margin="0,0,20,12">
                     <TextBlock Foreground="#34424D" Text="已唱 · 描边颜色（空白为沿用）" Margin="0,0,0,6" />
-                    <ComboBox x:Name="ActiveOutlineColorText" IsEditable="True" Text="#FFFFFFFF" Padding="8" />
+                    <controls:ColorField x:Name="ActiveOutlineColorText" Text="#FFFFFFFF" AllowEmpty="True" FallbackText="{Binding Text, ElementName=OutlineColorText}" />
                   </StackPanel>
                 </WrapPanel>
                 <WrapPanel>
@@ -530,7 +537,7 @@
                     <TextBox x:Name="RegionMarginText" Text="4" Padding="8" />
                   </StackPanel>
                 </WrapPanel>
-                <TextBlock Foreground="#687782" TextWrapping="Wrap" Text="颜色可从下拉框选择，也可输入 #RRGGBB 或 #AARRGGBB；旧项目保留原样式，选择 Liraoke 预设可切换至新配色。长歌词自动缩小以适应固定区域。" Margin="0,0,0,12" />
+                <TextBlock Foreground="#687782" TextWrapping="Wrap" Text="点击色块打开调色盘；可复制 / 粘贴 #RRGGBB 或 #AARRGGBB 色号（AA 为透明度，也可省略 #），棋盘底纹表示透明度。字号按短边 1080p 缩放；仅当歌词超出画面宽度或两句无法放入整幅画面时自动缩小。全局样式独立于工程保存。" Margin="0,0,0,12" />
               </StackPanel>
             </ScrollViewer>
           </TabItem>

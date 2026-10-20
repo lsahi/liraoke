@@ -36,8 +36,11 @@ public partial class MainWindow : Window
     private WorkspaceSession? _workspace;
     private bool _isClosing;
 
-    public MainWindow()
+    public MainWindow() : this(new UserPreferenceStore(AppContext.BaseDirectory)) { }
+
+    public MainWindow(UserPreferenceStore preferences)
     {
+        _userPreferenceStore = preferences;
         InitializeComponent();
         _japaneseAnnotationService = new JapaneseAnnotationService(_japaneseReadingService);
         InitializeLanguages();
@@ -369,7 +372,7 @@ public partial class MainWindow : Window
         if (LyricsGrid.IsKeyboardFocusWithin || VideoGrid.IsKeyboardFocusWithin || _isBusy
             || Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
             || Keyboard.FocusedElement is Controls.MetronomeValueWheel
-            || e.OriginalSource is DependencyObject focused && IsComboBoxInput(focused))
+            || e.OriginalSource is DependencyObject focused && IsShortcutEditingControl(focused))
         {
             return;
         }
@@ -460,11 +463,11 @@ public partial class MainWindow : Window
         else if (action == EditorShortcut.DeleteClip && IsPreviewMode) { DeleteVideoButton_Click(sender, e); }
     }
 
-    private static bool IsComboBoxInput(DependencyObject focused)
+    private static bool IsShortcutEditingControl(DependencyObject focused)
     {
         for (DependencyObject? current = focused; current is not null;)
         {
-            if (current is ComboBox or ComboBoxItem) { return true; }
+            if (current is ComboBox or ComboBoxItem or Controls.ColorField) { return true; }
             current = current is System.Windows.Media.Visual
                 ? System.Windows.Media.VisualTreeHelper.GetParent(current)
                 : LogicalTreeHelper.GetParent(current);

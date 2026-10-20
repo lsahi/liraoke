@@ -14,6 +14,8 @@ public sealed class WpfSubtitlePainter
     private readonly Dictionary<string, Brush> _brushes = [];
     private readonly WpfJapaneseSubtitlePainter _japanese = new();
     private readonly WpfSubtitleHighlightPainter _highlightPainter = new();
+    private (SubtitleStyle Style, double Width, double Height)? _placementKey;
+    private SubtitlePlacement? _placement;
 
     public void Draw(DrawingContext context, SubtitleScene scene, SubtitleStyle style, double width, double height)
     {
@@ -23,9 +25,13 @@ public sealed class WpfSubtitlePainter
         }
 
         double scale = Math.Min(width, height) / 1080;
-        double margin = Math.Max(12 * scale, width * style.MarginRatio);
-        double regionTop = height * (1 - style.SafeAreaRatio);
-        double slotHeight = height * style.SafeAreaRatio / 2;
+        if (_placementKey != (style, width, height))
+        {
+            _placement = SubtitlePlacement.Create(style, width, height);
+            _placementKey = (style, width, height);
+        }
+        var placement = _placement!;
+        double margin = placement.Margin;
         Brush inactive = ColorBrush(style.InactiveColor);
         Brush active = ColorBrush(style.ActiveColor);
         Brush outline = ColorBrush(style.OutlineColor);
@@ -33,7 +39,7 @@ public sealed class WpfSubtitlePainter
         var activeOutlinePen = style.ActiveOutlineColor is null ? null
             : new Pen(ColorBrush(style.ActiveOutlineColor), style.OutlineWidth * scale) { LineJoin = PenLineJoin.Round };
 
-        context.PushClip(new RectangleGeometry(new Rect(0, regionTop, width, height - regionTop)));
+        context.PushClip(new RectangleGeometry(new Rect(0, 0, width, height)));
         foreach (SubtitleLineScene item in scene.Lines)
         {
             bool hasSnapshot = LyricPresentationLayout.HasCurrentSnapshot(item.Line);
@@ -45,18 +51,16 @@ public sealed class WpfSubtitlePainter
                     || (item.Line.AnnotationType is AnnotationType.Kana or AnnotationType.Romaji) && IsNonJapanese(item));
             if (hasSnapshot ? !wholeLineAnnotation : item.Language == LyricLanguage.Japanese)
             {
-                _japanese.Draw(context, item, style, width, height);
+                _japanese.Draw(context, item, style, width, height, placement);
                 continue;
             }
             var key = new LayoutKey(item.Line.PrimaryText, annotation, style.FontFamily,
                 style.PrimaryFontSize * scale, style.AnnotationFontSize * scale,
-                Math.Max(1, width - 2 * margin - WpfSubtitleEntranceCue.ReservedWidth(item, style, scale)), slotHeight - margin * 0.5, style.LineGap * scale);
+                Math.Max(1, width - 2 * margin - WpfSubtitleEntranceCue.ReservedWidth(item, style, scale)), placement.MaxTextHeight, style.LineGap * scale);
             TextLayout layout = GetLayout(key);
             double cueWidth = WpfSubtitleEntranceCue.ReservedWidth(item, style, scale);
             double x = item.Slot == SubtitleSlot.TopLeft ? margin + cueWidth : width - margin - layout.Width;
-            double y = item.Slot == SubtitleSlot.TopLeft
-                ? regionTop + margin * 0.25
-                : height - margin * 0.25 - layout.Height;
+            double y = placement.Y(item.Slot, layout.Height, height);
 
             context.PushTransform(new TranslateTransform(x, y));
             WpfSubtitleEntranceCue.Draw(context, item, cueWidth, layout.PrimaryTop, layout.PrimaryText.Height,

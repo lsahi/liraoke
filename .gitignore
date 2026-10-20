@@ -9,3 +9,7 @@ tools/
 .packages/
 *.kfp.user
 .local-release/
+user-preferences.json
+user-preferences.json.bak
+user-preferences.json.lock
+user-preferences.json.*.tmp

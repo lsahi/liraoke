@@ -9,11 +9,85 @@ using KaraokeFilmMaker.Application.Rendering;
 using KaraokeFilmMaker.Domain.Projects;
 using KaraokeFilmMaker.Infrastructure.Persistence;
 using KaraokeFilmMaker.Infrastructure.Rendering;
+using KaraokeFilmMaker.App.Controls;
 
 namespace KaraokeFilmMaker.App.Tests;
 
 public sealed class SubtitleStyleEditorTests
 {
+    [Fact]
+    public async Task CorruptPreferencesLeaveBuiltinsAvailableAndShowErrorWithoutOverwriting() => await Sta(() =>
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "Liraoke.UserStyleUi", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var store = new UserPreferenceStore(directory);
+        File.WriteAllText(store.FilePath, "{");
+        var window = new MainWindow(store);
+        try
+        {
+            Field("_workspace").SetValue(window, new WorkspaceSession(directory, KaraokeProject.Create("test", DateTimeOffset.UnixEpoch)));
+            Method("RefreshSubtitleStyleFields").Invoke(window, null);
+            Assert.Equal(SubtitleStylePresets.All.Count + 1, ((ComboBox)window.FindName("SubtitlePresetCombo")).Items.Count);
+            Assert.Contains("无法读取", ((TextBlock)window.FindName("UserPreferenceStatusText")).Text);
+            ((TextBox)window.FindName("UserStyleNameText")).Text = "test";
+            Method("SaveUserStyle_Click").Invoke(window, [window, new RoutedEventArgs()]);
+            Assert.Contains("未能保存", ((TextBlock)window.FindName("UserPreferenceStatusText")).Text);
+            Assert.Equal("{", File.ReadAllText(store.FilePath));
+        }
+        finally
+        {
+            Field("_workspace").SetValue(window, null); Field("_allowClose").SetValue(window, true); window.Close();
+            Directory.Delete(directory, true);
+        }
+        return Task.CompletedTask;
+    });
+
+    [Fact]
+    public async Task CustomStylesSaveDraftAndLoadAcrossWindowsWithoutChangingProjectUntilApply() => await Sta(() =>
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "Liraoke.UserStyleUi", Guid.NewGuid().ToString("N"));
+        var store = new UserPreferenceStore(directory);
+        var first = new MainWindow(store);
+        MainWindow? second = null;
+        try
+        {
+            var project = KaraokeProject.Create("First project", DateTimeOffset.UnixEpoch);
+            Field("_workspace").SetValue(first, new WorkspaceSession(directory, project));
+            Method("RefreshSubtitleStyleFields").Invoke(first, null);
+            ((TextBox)first.FindName("PrimaryFontSizeText")).Text = "200";
+            ((ColorField)first.FindName("ActiveColorText")).Text = "80abcdef";
+            Method("SaveNamedUserStyle").Invoke(first, ["大字样式", false]);
+            Assert.Equal(project.SubtitleStyle, ((WorkspaceSession)Field("_workspace").GetValue(first)!).Project.SubtitleStyle);
+            var saved = Assert.Single(store.Load().SubtitleStyles);
+            Assert.Equal(200, saved.Style.PrimaryFontSize);
+            Assert.Equal("#80ABCDEF", saved.Style.ActiveColor);
+            // Identical values under different names must not silently select/delete the first preset.
+            store.SaveStyle("同参数第二个样式", saved.Style);
+
+            second = new MainWindow(new UserPreferenceStore(directory));
+            var next = KaraokeProject.Create("Other project", DateTimeOffset.UnixEpoch);
+            Field("_workspace").SetValue(second, new WorkspaceSession(directory, next));
+            Method("RefreshSubtitleStyleFields").Invoke(second, null);
+            var presets = (ComboBox)second.FindName("SubtitlePresetCombo");
+            presets.SelectedIndex = presets.Items.Count - 1;
+            Assert.Equal(presets.Items.Count - 1, presets.SelectedIndex);
+            Assert.Equal("200", ((TextBox)second.FindName("PrimaryFontSizeText")).Text);
+            Assert.Equal("#80ABCDEF", ((ColorField)second.FindName("ActiveColorText")).PreviewColor!.Value.ToString());
+            Assert.Equal(next.SubtitleStyle, ((WorkspaceSession)Field("_workspace").GetValue(second)!).Project.SubtitleStyle);
+            Method("ApplySubtitleStyleFields").Invoke(second, null);
+            Assert.Equal(saved.Style, ((WorkspaceSession)Field("_workspace").GetValue(second)!).Project.SubtitleStyle);
+            store.DeleteStyle(saved.Id);
+            Assert.Equal(saved.Style, ((WorkspaceSession)Field("_workspace").GetValue(second)!).Project.SubtitleStyle);
+        }
+        finally
+        {
+            foreach (var window in new[] { first, second }.OfType<MainWindow>())
+            { Field("_workspace").SetValue(window, null); Field("_allowClose").SetValue(window, true); window.Close(); }
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+        return Task.CompletedTask;
+    });
+
     [Fact]
     public async Task PresetSelectionIsDraftUntilAppliedAndCanUndoRedoAndRoundTrip() => await Sta(async () =>
     {
@@ -29,7 +103,8 @@ public sealed class SubtitleStyleEditorTests
             Assert.Equal(SubtitleStylePresets.All.Count + 1, presets.Items.Count);
             presets.SelectedIndex = 2;
             Assert.Equal(project.SubtitleStyle, Current().SubtitleStyle);
-            Assert.Equal("#FF000000", ((ComboBox)window.FindName("ActiveOutlineColorText")).Text);
+            Assert.Equal("#FF000000", ((ColorField)window.FindName("ActiveOutlineColorText")).Text);
+            Assert.Equal("#FF000000", ((ColorField)window.FindName("ActiveOutlineColorText")).PreviewColor!.Value.ToString());
             Call("ApplySubtitleStyleFields");
             Call("RecordHistory", session);
             var applied = Current().SubtitleStyle;
@@ -68,7 +143,7 @@ public sealed class SubtitleStyleEditorTests
             Assert.Equal(project.SubtitleStyle.FontFamily, combo.Text);
             Assert.Contains("本机未安装", ((TextBlock)window.FindName("SubtitleFontStatusText")).Text);
             Assert.Contains(SystemFontCatalog.Resolve(combo.Text), ((TextBlock)window.FindName("SubtitleFontStatusText")).Text);
-            Assert.Equal("", ((ComboBox)window.FindName("ActiveOutlineColorText")).Text);
+            Assert.Equal("", ((ColorField)window.FindName("ActiveOutlineColorText")).Text);
             Method("ApplySubtitleStyleFields").Invoke(window, null);
             var saved = ((WorkspaceSession)Field("_workspace").GetValue(window)!).Project;
             Assert.Equal(project.SubtitleStyle, saved.SubtitleStyle);

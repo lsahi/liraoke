@@ -41,7 +41,7 @@ public sealed class PortraitSubtitleRenderingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LongPortraitLyricsFitBothSlotsWithinTheBottomSafeArea(bool japanese)
+    public async Task LongPortraitLyricsFitBothBottomAnchoredSlots(bool japanese)
     {
         string text = japanese ? string.Concat(Enumerable.Repeat("未来へ進む", 10))
             : string.Join(' ', Enumerable.Repeat("Keep singing with us", 8));
@@ -52,8 +52,11 @@ public sealed class PortraitSubtitleRenderingTests
         await using var renderer = new WpfSubtitleFrameRenderer(project);
         var frame = await renderer.RenderAsync(ProjectTime.FromSeconds(1), 720, 1280);
 
-        var top = VisibleBounds(frame, 896, 1088);
-        var bottom = VisibleBounds(frame, 1088, 1280);
+        var rows = Enumerable.Range(0, frame.Height).Where(y => CountVisible(frame, y, y + 1) > 0).ToArray();
+        int split = rows.Zip(rows.Skip(1), (a, b) => (Gap: b - a, Split: (a + b) / 2))
+            .MaxBy(pair => pair.Gap).Split;
+        var top = VisibleBounds(frame, 0, split);
+        var bottom = VisibleBounds(frame, split, frame.Height);
         Assert.InRange(top.Left, 10, 40);
         Assert.InRange(top.Right, 640, 710);
         Assert.InRange(bottom.Left, 10, 80);

@@ -14,11 +14,10 @@ internal sealed class WpfJapaneseSubtitlePainter
     private readonly Dictionary<(LyricLine, SubtitleStyle, double, double, bool, bool), Layout> _layouts = [];
     private readonly WpfSubtitleHighlightPainter _highlightPainter = new();
 
-    public void Draw(DrawingContext context, SubtitleLineScene scene, SubtitleStyle style, double width, double height)
+    public void Draw(DrawingContext context, SubtitleLineScene scene, SubtitleStyle style, double width, double height, SubtitlePlacement placement)
     {
         double scale = Math.Min(width, height) / 1080;
-        double margin = Math.Max(12 * scale, width * style.MarginRatio);
-        double slotHeight = height * style.SafeAreaRatio / 2;
+        double margin = placement.Margin;
         bool reserveRuby = IsJapaneseLine(scene);
         double cueWidth = WpfSubtitleEntranceCue.ReservedWidth(scene, style, scale);
         var key = (scene.Line, style, width, height, reserveRuby, cueWidth > 0);
@@ -29,14 +28,13 @@ internal sealed class WpfJapaneseSubtitlePainter
                 : JapaneseRubyBuilder.Build(scene.Line, style.ShowRomanization);
             layout = Build(groups, style, scale, reserveRuby);
             double fit = Math.Min(1, Math.Min(Math.Max(1, width - 2 * margin - cueWidth) / Math.Max(1, layout.Width),
-                (slotHeight - margin * 0.5) / Math.Max(1, layout.Height)));
+                placement.MaxTextHeight / Math.Max(1, layout.Height)));
             if (fit < 1) { layout = Build(groups, style, scale * fit, reserveRuby); }
             if (_layouts.Count >= 256) { _layouts.Clear(); }
             _layouts[key] = layout;
         }
         double x = scene.Slot == SubtitleSlot.TopLeft ? margin + cueWidth : width - margin - layout.Width;
-        double y = scene.Slot == SubtitleSlot.TopLeft ? height * (1 - style.SafeAreaRatio) + margin * 0.25
-            : height - margin * 0.25 - layout.Height;
+        double y = placement.Y(scene.Slot, layout.Height, height);
         Brush inactive = BrushFor(style.InactiveColor), active = BrushFor(style.ActiveColor);
         var outline = new Pen(BrushFor(style.OutlineColor), style.OutlineWidth * layout.Scale) { LineJoin = PenLineJoin.Round };
         var activeOutline = style.ActiveOutlineColor is null ? null

@@ -35,15 +35,17 @@ public sealed class RubySweepMappingTests
         var middle = await renderer.RenderAsync(ProjectTime.FromSeconds(2), 1920, 1080);
         var partial = await renderer.RenderAsync(ProjectTime.FromSeconds(3.5), 1920, 1080);
         var finished = await renderer.RenderAsync(ProjectTime.FromSeconds(4), 1920, 1080);
-        // With these sizes each primary ideograph occupies 64px, and ruby remains above y=798.
-        // The third glyph starts at x=140 (12px margin + 2 * 64px).
-        Assert.True(Count(finished, 140, 204, 756, 798) > 10, "The last ruby must exist and become yellow when 出 is sung.");
-        Assert.Equal(0, Count(middle, 140, 204, 756, 798));
-        Assert.Equal(Crop(before), Crop(middle));
-        int partialRuby = Count(partial, 140, 204, 756, 798);
-        Assert.InRange(partialRuby, 1, Count(finished, 140, 204, 756, 798) - 1);
-        Assert.True(Count(partial, 140, 204, 798, 900) > 10, "The primary 出 is swept at the same time.");
-        Assert.Equal(0, Count(middle, 140, 204, 798, 900));
+        // Locate ruby/primary separation from actual glyph rows, not the retired 30% region.
+        var rows = Enumerable.Range(0, finished.Height).Where(y => Count(finished, 140, 204, y, y + 1) > 0).ToArray();
+        int split = rows.Zip(rows.Skip(1), (a, b) => (Gap: b - a, Split: (a + b) / 2))
+            .MaxBy(pair => pair.Gap).Split;
+        Assert.True(Count(finished, 140, 204, 0, split) > 10, "The last ruby must exist and become yellow when 出 is sung.");
+        Assert.Equal(0, Count(middle, 140, 204, 0, split));
+        Assert.Equal(Crop(before, split), Crop(middle, split));
+        int partialRuby = Count(partial, 140, 204, 0, split);
+        Assert.InRange(partialRuby, 1, Count(finished, 140, 204, 0, split) - 1);
+        Assert.True(Count(partial, 140, 204, split, finished.Height) > 10, "The primary 出 is swept at the same time.");
+        Assert.Equal(0, Count(middle, 140, 204, split, finished.Height));
         Assert.Equal(middle.BgraPixels.ToArray(), (await renderer.RenderAsync(ProjectTime.FromSeconds(2), 1920, 1080)).BgraPixels.ToArray());
         Save(middle, $"ruby-waits-{snapshot}-{remapped}-{romanized}.png");
         Save(partial, $"ruby-follows-{snapshot}-{remapped}-{romanized}.png");
@@ -60,7 +62,7 @@ public sealed class RubySweepMappingTests
         }
         return count;
     }
-    private static byte[] Crop(RenderedFrame frame) => Enumerable.Range(756, 42)
+    private static byte[] Crop(RenderedFrame frame, int split) => Enumerable.Range(0, split)
         .SelectMany(y => frame.BgraPixels.Slice(y * frame.Stride + 140 * 4, 64 * 4).ToArray()).ToArray();
     private static void Save(RenderedFrame frame, string name)
     {
