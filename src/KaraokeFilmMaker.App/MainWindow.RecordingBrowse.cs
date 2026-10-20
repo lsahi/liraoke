@@ -12,6 +12,8 @@ public partial class MainWindow
     private int RecordingEditLineIndex()
     {
         if (_workspace is null) { return -1; }
+        if (!_roleMultiSelection && _roleSelectedLines.Count == 1)
+            return _workspace.Project.Lyrics.Lines.ToList().FindIndex(line => _roleSelectedLines.Contains(line.Id));
         Guid? id = _recordingEditTarget?.LineId ?? _browsedRecordingLineId ?? CurrentRecordingLine.LineId;
         return id is { } selected ? _workspace.Project.Lyrics.Lines.ToList().FindIndex(line => line.Id == selected)
             : Math.Clamp(LyricsGrid.SelectedIndex, 0, Math.Max(0, _workspace.Project.Lyrics.Lines.Count - 1));

@@ -53,6 +53,7 @@ public static class LyricLineEditor
             Units = [.. first.Units, .. second.Units.Select(unit => unit with
             {
                 DisplayRanges = unit.DisplayRanges.Select(range => new TextRange(range.Start + shift, range.Length)).ToArray(),
+                RoleIds = unit.RoleIds ?? (second.RoleIds.SequenceEqual(first.RoleIds) ? null : second.RoleIds),
             })],
             ReviewState = ReviewState.Unreviewed,
             LanguageSpans = LanguageMetadataEditor.MergeSpans(first, second),
@@ -71,7 +72,11 @@ public static class LyricLineEditor
         LyricLine Part(string text, TimeRange timing, bool keepId) => line with
         {
             Id = keepId ? line.Id : Guid.NewGuid(), PrimaryText = text, Timing = timing,
-            Units = LyricImportService.CreateUnits(text, timing, language),
+            Units = RoleAssignments.Transfer(line, LyricImportService.CreateUnits(text, timing, language)
+                .Select(unit => unit with { DisplayRanges = unit.DisplayRanges.Select(range =>
+                    new TextRange(range.Start + (keepId ? 0 : offset), range.Length)).ToArray() }).ToArray())
+                .Select(unit => unit with { DisplayRanges = unit.DisplayRanges.Select(range =>
+                    new TextRange(range.Start - (keepId ? 0 : offset), range.Length)).ToArray() }).ToArray(),
             ReadingText = null, AnnotationText = null, RomanizationText = null, TranslationText = null,
             ReadingSource = null, ReviewState = ReviewState.Unreviewed,
             LanguageSpans = null, Presentation = null,

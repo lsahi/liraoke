@@ -8,6 +8,32 @@ public static class ProjectValidator
     public static IReadOnlyList<string> Validate(KaraokeProject project)
     {
         List<string> errors = [];
+        if (project.Roles is null || project.Roles.Count > 200)
+            errors.Add("角色列表无效，最多支持 200 个角色。");
+        else
+        {
+            var ids = new HashSet<Guid>();
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var role in project.Roles)
+                if (role is null || role.Id == Guid.Empty || !ids.Add(role.Id) || string.IsNullOrWhiteSpace(role.Name)
+                    || role.Name.Length > 80 || role.Name != role.Name.Trim() || role.Name.Any(char.IsControl)
+                    || !names.Add(role.Name) || !IsValidStyle(role.Style))
+                    errors.Add("角色名称、标识或字幕样式无效。");
+            foreach (var line in project.Lyrics.Lines)
+            {
+                if (line.RoleIds is null || line.RoleIds.Distinct().Count() != line.RoleIds.Count || line.RoleIds.Any(id => !ids.Contains(id)))
+                    errors.Add("歌词行引用了不存在或重复的角色。");
+                foreach (var unit in line.Units)
+                    if (unit.RoleIds is { } roles && (roles.Distinct().Count() != roles.Count || roles.Any(id => !ids.Contains(id))))
+                        errors.Add("歌词单元引用了不存在或重复的角色。");
+            }
+        }
+        var title = project.SongTitle;
+        if (title is null || !Enum.IsDefined(title.Position) || title.Text?.Length > 500
+            || title.Text?.Any(char.IsControl) == true
+            || !IsValidStyle(new SubtitleStyle(title.FontFamily, title.FontSize, 28, title.Color, title.Color,
+                title.OutlineColor, title.OutlineWidth, title.ShadowOffset, MarginRatio: title.MarginRatio)))
+            errors.Add("曲名文字、位置或样式无效；曲名不超过 500 字且不包含换行。");
 
         if (!Enum.IsDefined(project.AudioVisualizationStyle))
         { errors.Add("Unknown audio visualization style."); }
@@ -169,18 +195,7 @@ public static class ProjectValidator
             }
         }
 
-        var style = project.SubtitleStyle;
-        if (string.IsNullOrWhiteSpace(style.FontFamily)
-            || style.FontFamily.Any(char.IsControl) || style.FontFamily.Contains("://", StringComparison.Ordinal)
-            || !double.IsFinite(style.PrimaryFontSize) || style.PrimaryFontSize is <= 0 or > 512
-            || !double.IsFinite(style.AnnotationFontSize) || style.AnnotationFontSize is <= 0 or > 512
-            || !double.IsFinite(style.OutlineWidth) || style.OutlineWidth is < 0 or > 64
-            || !double.IsFinite(style.ShadowOffset) || style.ShadowOffset is < 0 or > 64
-            || !double.IsFinite(style.SafeAreaRatio) || style.SafeAreaRatio is <= 0 or > 1
-            || !double.IsFinite(style.LineGap) || style.LineGap is < 0 or > 256
-            || !double.IsFinite(style.MarginRatio) || style.MarginRatio is < 0 or >= 0.25
-            || !IsHexColor(style.InactiveColor) || !IsHexColor(style.ActiveColor) || !IsHexColor(style.OutlineColor)
-            || style.ActiveOutlineColor is not null && !IsHexColor(style.ActiveOutlineColor))
+        if (!IsValidStyle(project.SubtitleStyle))
         {
             errors.Add("Subtitle style requires valid font sizes, colors, outline, shadow and safe area.");
         }
@@ -199,6 +214,18 @@ public static class ProjectValidator
 
         return errors;
     }
+
+    public static bool IsValidStyle(SubtitleStyle? style) => style is not null && !(string.IsNullOrWhiteSpace(style.FontFamily)
+            || style.FontFamily.Any(char.IsControl) || style.FontFamily.Contains("://", StringComparison.Ordinal)
+            || !double.IsFinite(style.PrimaryFontSize) || style.PrimaryFontSize is <= 0 or > 512
+            || !double.IsFinite(style.AnnotationFontSize) || style.AnnotationFontSize is <= 0 or > 512
+            || !double.IsFinite(style.OutlineWidth) || style.OutlineWidth is < 0 or > 64
+            || !double.IsFinite(style.ShadowOffset) || style.ShadowOffset is < 0 or > 64
+            || !double.IsFinite(style.SafeAreaRatio) || style.SafeAreaRatio is <= 0 or > 1
+            || !double.IsFinite(style.LineGap) || style.LineGap is < 0 or > 256
+            || !double.IsFinite(style.MarginRatio) || style.MarginRatio is < 0 or >= 0.25
+            || !IsHexColor(style.InactiveColor) || !IsHexColor(style.ActiveColor) || !IsHexColor(style.OutlineColor)
+            || style.ActiveOutlineColor is not null && !IsHexColor(style.ActiveOutlineColor));
 
     private static bool IsHexColor(string color) =>
         color is { Length: 7 or 9 } && color[0] == '#' && color.Skip(1).All(Uri.IsHexDigit);

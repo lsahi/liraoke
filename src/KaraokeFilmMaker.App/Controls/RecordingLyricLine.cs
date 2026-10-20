@@ -6,6 +6,7 @@ using System.Windows.Media;
 using KaraokeFilmMaker.Application.Rendering;
 using KaraokeFilmMaker.Application.Lyrics;
 using KaraokeFilmMaker.Domain.Lyrics;
+using KaraokeFilmMaker.Domain.Projects;
 
 namespace KaraokeFilmMaker.App.Controls;
 
@@ -17,6 +18,30 @@ public sealed class RecordingLyricLine : FrameworkElement
     private bool _romaji;
     private int _active = -1, _completed;
     private Guid? _selected;
+    private HashSet<Guid> _multiSelected = [];
+    private bool _wholeLineSelected;
+    private IReadOnlyList<SingingRole>? _appearanceRoles;
+    private LyricLine? _appearanceLine;
+    private readonly Dictionary<Guid, Brush[]> _roleColors = [];
+    public void SetRoleAppearance(IReadOnlyList<SingingRole> roles)
+    {
+        if (ReferenceEquals(roles, _appearanceRoles) && ReferenceEquals(_line, _appearanceLine)) return;
+        _appearanceRoles = roles; _appearanceLine = _line; _roleColors.Clear();
+        if (_line is not null)
+            foreach (var unit in _line.Units)
+            {
+                var colors = roles.Where(r => RoleAssignments.Effective(_line, unit).Contains(r.Id)).Select(r =>
+                { var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(r.Style.ActiveColor)); brush.Freeze(); return (Brush)brush; }).ToArray();
+                if (colors.Length > 0) _roleColors[unit.Id] = colors;
+            }
+        InvalidateVisual();
+    }
+    public void SetRoleSelection(IReadOnlySet<Guid> units, bool wholeLine)
+    {
+        var relevant = _cells.Where(cell => units.Contains(cell.Id)).Select(cell => cell.Id).ToHashSet();
+        if (_wholeLineSelected == wholeLine && _multiSelected.SetEquals(relevant)) return;
+        _multiSelected = relevant; _wholeLineSelected = wholeLine; InvalidateVisual();
+    }
     private IReadOnlySet<Guid>? _pendingUnits;
     private int _pendingRevision;
     private readonly List<Cell> _cells = [];
@@ -137,11 +162,16 @@ public sealed class RecordingLyricLine : FrameworkElement
             bool active = cell.Index == _active, complete = _pendingUnits?.Contains(cell.Id) ?? cell.Index < _completed;
             bool saved = _line is not null && LyricRecordingProgress.IsCompleted(_line.Units[cell.Index]);
             Brush foreground = complete ? PendingInk : saved ? SavedInk : Ink;
-            var border = new Pen(cell.Id == _selected ? SelectedBorder : active ? ActiveBorder : CellBorder, active || cell.Id == _selected ? 1.5 : 0.75);
+            bool selected = cell.Id == _selected || _wholeLineSelected || _multiSelected.Contains(cell.Id);
+            var border = new Pen(selected ? SelectedBorder : active ? ActiveBorder : CellBorder, active || selected ? 1.5 : 0.75);
             dc.DrawRoundedRectangle(active ? ActiveBackground : InactiveBackground,
                 border, new Rect(cell.X, 1, cell.Width, _hasRomanization ? 43 : 29), 3, 3);
             DrawCentered(dc, cell.Text, 19, foreground, cell.X, cell.Width, 3);
             if (cell.Romaji.Length > 0) { DrawCentered(dc, cell.Romaji, 10, MutedInk, cell.X, cell.Width, 27); }
+            if (_roleColors.TryGetValue(cell.Id, out var colors))
+                for (int i = 0; i < colors.Length; i++)
+                    dc.DrawRectangle(colors[i], null, new Rect(cell.X + 2, (_hasRomanization ? 41 : 27) + i * 3d / colors.Length,
+                        Math.Max(1, cell.Width - 4), 3d / colors.Length));
         }
         foreach (var original in _originals)
         { DrawCentered(dc, original.Text, original.Secondary ? 18 : 19, Ink,

@@ -60,7 +60,7 @@ public sealed class JapaneseAnnotationService(IJapaneseReadingService readingSer
             ReadingText = readingText,
             RomanizationText = romanizationText,
             ReadingSource = ReadingSource.Generated,
-            Units = units,
+            Units = RoleAssignments.Transfer(line, units),
             ReviewState = readingText.EnumerateRunes().Any(rune =>
                 rune.Value is >= 0x3400 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0x20000 and <= 0x323AF)
                 ? ReviewState.ReviewLater : ReviewState.Unreviewed,
@@ -77,7 +77,7 @@ public sealed class JapaneseAnnotationService(IJapaneseReadingService readingSer
         {
             ReadingText = reading, AnnotationText = reading,
             RomanizationText = string.Join(" ", units.Select(unit => unit.Romanization)),
-            Units = units, ReadingSource = ReadingSource.Manual,
+            Units = RoleAssignments.Transfer(line, units), ReadingSource = ReadingSource.Manual,
         };
     }
 

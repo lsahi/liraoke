@@ -67,7 +67,9 @@ public partial class LyricUnitEditorWindow : Window
             string.Concat(units.Select(unit => unit.Reading)),
             string.Concat(units.Select(unit => unit.Romanization)),
             new TimeRange(units[0].Timing.Start, units[^1].Timing.End),
-            units[0].RawInputTime, IsConfirmed: false, LanguageId: units[0].LanguageId);
+            units[0].RawInputTime, IsConfirmed: false, LanguageId: units[0].LanguageId)
+        { RoleIds = units.All(unit => unit.RoleIds is null) ? null
+            : units.SelectMany(unit => RoleAssignments.Effective(_line, unit)).Distinct().ToArray() };
         for (int index = indexes[^1]; index >= indexes[0]; index--)
         {
             _rows.RemoveAt(index);

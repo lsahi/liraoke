@@ -41,6 +41,18 @@ public sealed class UserPreferenceStore(string appDirectory)
     public UserPreferences DeleteStyle(Guid id) => Update(current =>
         current with { SubtitleStyles = current.SubtitleStyles.Where(item => item.Id != id).ToArray() });
 
+    public UserPreferences SaveRole(string name, SubtitleStyle style, bool overwrite = false) => Update(current =>
+    {
+        name = name.Trim();
+        var previous = current.Roles.FirstOrDefault(role => string.Equals(role.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (previous is not null && !overwrite) throw new InvalidOperationException("已有同名角色，请确认覆盖或使用其他名称。");
+        var role = new SingingRole(previous?.Id ?? Guid.NewGuid(), name, style);
+        return current with { Roles = [.. current.Roles.Where(item => item.Id != role.Id), role] };
+    });
+
+    public UserPreferences DeleteRole(Guid id) => Update(current =>
+        current with { Roles = current.Roles.Where(role => role.Id != id).ToArray() });
+
     private UserPreferences Update(Func<UserPreferences, UserPreferences> change)
     {
         // No silent fallback to another directory; user preferences really live alongside the EXE.
@@ -67,18 +79,22 @@ public sealed class UserPreferenceStore(string appDirectory)
     {
         if (preferences.SchemaVersion != UserPreferences.CurrentSchemaVersion)
             throw new InvalidDataException("此用户偏好格式不受当前版本支持，未改写文件。");
-        if (preferences.SubtitleStyles is null || preferences.ApiConnections is null || preferences.SubtitleStyles.Count > 200)
+        if (preferences.SubtitleStyles is null || preferences.ApiConnections is null || preferences.SubtitleStyles.Count > 200
+            || preferences.Roles is null || preferences.Roles.Count > 200)
             throw new InvalidDataException("用户偏好结构无效，或自定义样式超过 200 个。");
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var ids = new HashSet<Guid>();
-        foreach (var item in preferences.SubtitleStyles)
+        foreach (var collection in new[] { preferences.SubtitleStyles, preferences.Roles.Select(role =>
+            role is null ? null! : new SavedSubtitleStyle(role.Id, role.Name, role.Style)).ToArray() })
         {
+          var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+          var ids = new HashSet<Guid>();
+          foreach (var item in collection)
+          {
             if (item is null || item.Id == Guid.Empty || !ids.Add(item.Id) || string.IsNullOrWhiteSpace(item.Name)
                 || item.Name != item.Name.Trim() || item.Name.Length > 80 || item.Name.Any(char.IsControl) || !names.Add(item.Name))
                 throw new InvalidDataException("样式名称须为 1–80 个字符，且名称和标识不能重复。");
-            if (item.Style is null || ProjectValidator.Validate(KaraokeProject.Create("Style validation", DateTimeOffset.UnixEpoch)
-                with { SubtitleStyle = item.Style }).Count > 0)
+            if (!ProjectValidator.IsValidStyle(item.Style))
                 throw new InvalidDataException("自定义样式参数无效，未改写偏好文件。");
+          }
         }
     }
 }

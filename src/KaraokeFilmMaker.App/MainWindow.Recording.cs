@@ -180,17 +180,21 @@ public partial class MainWindow
             : $"{(_browsedRecordingLineId is null ? "跟随打点" : "浏览中")} · {current + 1}/{document!.Lines.Count} 句 · 滚轮翻看";
         CurrentRecordingLabel.Text = line is null ? "当前句" : $"{(_browsedRecordingLineId is null ? "当前句" : "浏览句")} · {current + 1}" + LanguageSummary(line);
         NextRecordingLabel.Text = next < 0 ? "下一句 · 已到末句" : $"下一句 · {next + 1}";
+        CurrentRecordingLabel.Text += RoleSummary(line);
         bool changed = CurrentRecordingLine.LineId != line?.Id;
         CurrentRecordingLine.Update(line, document?.Language ?? LyricLanguage.Chinese, show,
             current == recording ? active : -1, current == recording ? completed : 0, _recordingEditTarget?.UnitId,
             _pendingTapUnitIds, _markers.Count);
         var nextLine = next >= 0 ? document!.Lines[next] : null;
+        NextRecordingLabel.Text += RoleSummary(nextLine);
         bool nextChanged = NextRecordingLine.LineId != nextLine?.Id;
         NextRecordingLine.Update(nextLine, document?.Language ?? LyricLanguage.Chinese, show,
             next == recording ? active : -1, next == recording ? completed : 0, _recordingEditTarget?.UnitId,
             _pendingTapUnitIds, _markers.Count);
         if (changed) { CurrentLineScroll.ScrollToLeftEnd(); }
         if (nextChanged) { NextLineScroll.ScrollToLeftEnd(); }
+        RefreshExtraRecordingRows(current, recording, active, completed);
+        if (changed && _roleSelectedLines.Count == 0 && _roleSelectedUnits.Count == 0) RefreshRoleAssignmentChoices();
         if (!_suppressRecordingScroll && _browsedRecordingLineId is null)
         { Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() => CurrentRecordingLine.RevealActive(CurrentLineScroll))); }
     }
@@ -198,8 +202,7 @@ public partial class MainWindow
     private void RecordingUnitSelected(Guid lineId, Guid unitId)
     {
         if (!CanLeaveQuickEdit()) { return; }
-        _recordingEditTarget = (lineId, unitId);
-        ShowQuickEdit();
+        if (!SelectRoleUnit(lineId, unitId, System.Windows.Input.Keyboard.Modifiers)) ShowQuickEdit();
         _suppressRecordingScroll = true;
         try { _lastTapHint = null; RefreshTapHint(_playback.Position); }
         finally { _suppressRecordingScroll = false; }
@@ -209,6 +212,7 @@ public partial class MainWindow
     private void ShowQuickEdit()
     {
         QuickEditPanel.Visibility = Visibility.Collapsed;
+        if (_roleMultiSelection) return;
         if (_recordingEditTarget is not { } target || _workspace is null) { return; }
         var line = _workspace.Project.Lyrics.Lines.FirstOrDefault(line => line.Id == target.LineId);
         var unit = line?.Units.FirstOrDefault(unit => unit.Id == target.UnitId);
@@ -271,7 +275,7 @@ public partial class MainWindow
 
     private async Task EditRecordingBoundaryAsync(bool merge)
     {
-        if (_workspace is null || _isBusy || !CanLeaveQuickEdit()) { return; }
+        if (_roleMultiSelection || _workspace is null || _isBusy || !CanLeaveQuickEdit()) { return; }
         await RunUiOperationAsync(async () =>
         {
             ApplyLyricRowsToProject();

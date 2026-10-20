@@ -107,11 +107,14 @@ public partial class MainWindow
     {
         if (_syncingRomanization || sender is not System.Windows.Controls.CheckBox check) { return; }
         bool show = check.IsChecked == true;
+        if (ReferenceEquals(sender, StyleShowRomajiCheckBox) && _editingStyleRoleId is not null)
+        { _draftStyleRomanization = show; return; }
         if (_workspace is null) { _draftStyleRomanization = show; return; }
         var before = _workspace;
         _workspace = _workspace with { Project = _workspace.Project with
         { SubtitleStyle = _workspace.Project.SubtitleStyle with { ShowRomanization = show }, ModifiedAtUtc = DateTimeOffset.UtcNow } };
-        SetRomanizationChecks(show);
+        if (_editingStyleRoleId is null) SetRomanizationChecks(show);
+        else { _syncingRomanization = true; ShowRomajiCheckBox.IsChecked = show; _syncingRomanization = false; }
         RecordHistory(before);
         _lastTapHint = null; RefreshTapHint(_playback.Position); RefreshLyricPreview(_playback.Position);
         ProjectTimeline.Focus();
@@ -124,9 +127,11 @@ public partial class MainWindow
             return;
         }
 
-        SubtitleStyle style = _workspace.Project.SubtitleStyle;
+        RefreshRoleControls();
+        SongTitleEditor.Load(_workspace.Project);
+        SubtitleStyle style = EditingStyle;
         InitializeSubtitleStyleEditor();
-        PopulateSubtitleStyleFields(style);
+        PopulateSubtitleStyleFields(style, draft: _editingStyleRoleId is not null);
     }
 
     private void PopulateSubtitleStyleFields(SubtitleStyle style, bool draft = false)
@@ -172,7 +177,10 @@ public partial class MainWindow
         }
 
         var style = ReadSubtitleStyleFields();
-        KaraokeProject updated = _workspace.Project with { SubtitleStyle = style };
+        KaraokeProject updated = _editingStyleRoleId is { } roleId
+            ? _workspace.Project with { Roles = _workspace.Project.Roles.Select(r => r.Id == roleId ? r with { Style = style } : r).ToArray() }
+            : _workspace.Project with { SubtitleStyle = style };
+        updated = updated with { SongTitle = SongTitleEditor.Read() };
         IReadOnlyList<string> errors = ProjectValidator.Validate(updated);
         if (errors.Count > 0)
         {
@@ -180,14 +188,15 @@ public partial class MainWindow
         }
 
         _workspace = _workspace with { Project = updated with { ModifiedAtUtc = DateTimeOffset.UtcNow } };
-        SetRomanizationChecks(style.ShowRomanization);
+        SongTitleEditor.Load(_workspace.Project, force: true);
+        if (_editingStyleRoleId is null) SetRomanizationChecks(style.ShowRomanization);
     }
 
     private SubtitleStyle ReadSubtitleStyleFields()
     {
-        var style = (_workspace?.Project.SubtitleStyle ?? KaraokeProject.Create("Style", DateTimeOffset.UnixEpoch).SubtitleStyle) with
+        var style = EditingStyle with
         {
-            ShowRomanization = _draftStyleRomanization ?? _workspace?.Project.SubtitleStyle.ShowRomanization ?? StyleShowRomajiCheckBox.IsChecked == true,
+            ShowRomanization = _draftStyleRomanization ?? EditingStyle.ShowRomanization,
             FontFamily = SubtitleFontText.Text.Trim(),
             PrimaryFontSize = ParseSize(PrimaryFontSizeText.Text, "主歌词字号"),
             AnnotationFontSize = ParseSize(AnnotationFontSizeText.Text, "辅助行字号"),

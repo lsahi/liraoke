@@ -17,6 +17,7 @@ public sealed record UserPreferences
     public const int CurrentSchemaVersion = 1;
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public IReadOnlyList<SavedSubtitleStyle> SubtitleStyles { get; init; } = [];
+    public IReadOnlyList<SingingRole> Roles { get; init; } = [];
     // Credentials themselves belong to a future OS-protected store, never plaintext in this file.
     public IReadOnlyDictionary<string, ApiConnectionPreference> ApiConnections { get; init; } = new Dictionary<string, ApiConnectionPreference>();
     [JsonExtensionData] public Dictionary<string, JsonElement>? AdditionalSettings { get; init; }

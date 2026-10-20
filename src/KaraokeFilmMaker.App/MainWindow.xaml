@@ -235,6 +235,29 @@
                   </ControlTemplate></CheckBox.Template>
                 </CheckBox>
                </TabItem>
+               <TabItem Header="曲名显示">
+                 <controls:SongTitleEditor x:Name="SongTitleEditor" />
+               </TabItem>
+               <TabItem Header="角色控制">
+                 <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <StackPanel Margin="6">
+                    <TextBlock Text="当前工程角色（顺序即合唱分色顺序）" TextWrapping="Wrap" Margin="0,5" />
+                    <ListBox x:Name="ProjectRolesList" DisplayMemberPath="Name" Height="110" SelectionChanged="ProjectRole_Changed" />
+                    <TextBox x:Name="RoleNameText" MaxLength="80" Margin="0,8" ToolTip="角色名称" />
+                    <WrapPanel>
+                      <Button Content="添加" Click="AddRole_Click" Margin="0,0,5,5" />
+                      <Button Content="改名" Click="RenameRole_Click" Margin="0,0,5,5" />
+                      <Button Content="移除" Click="RemoveRole_Click" Margin="0,0,0,5" />
+                    </WrapPanel>
+                    <Button Content="编辑角色字幕样式…" Click="EditRoleStyle_Click" Margin="0,5" />
+                    <Button Content="保存角色与样式到常用配置" Click="SaveRolePreset_Click" Margin="0,5" />
+                    <TextBlock Text="常用角色（跨工程）" Margin="0,14,0,5" />
+                    <ComboBox x:Name="SavedRolesCombo" DisplayMemberPath="Name" />
+                    <Button Content="加入当前工程" Click="ImportRolePreset_Click" Margin="0,5" />
+                    <TextBlock Text="合唱只显示一份歌词，按角色顺序从上到下分色；第一个角色决定字体与字号。在打轴页选择句子或演唱单元后分配角色。保存常用配置不会更改其他工程。" TextWrapping="Wrap" Foreground="#687782" Margin="0,8" />
+                  </StackPanel>
+                 </ScrollViewer>
+               </TabItem>
               </TabControl>
             </Border>
            </Grid>
@@ -245,7 +268,8 @@
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Border Background="#FFFFFF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                  <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4*" /><RowDefinition Height="*" MinHeight="78" /></Grid.RowDefinitions>
                     <StackPanel>
                         <DockPanel Margin="0,0,0,4">
                             <WrapPanel DockPanel.Dock="Right">
@@ -269,14 +293,25 @@
                                            TextWrapping="Wrap" VerticalAlignment="Center" />
                             </DockPanel>
                         </Border>
-                        <TextBlock x:Name="CurrentRecordingLabel" Text="当前句" Foreground="#687782" FontSize="11" Margin="0,5,0,2" />
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" x:Name="RecordingLyricsViewport" SizeChanged="RecordingLyricsViewport_SizeChanged"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PreviewMouseWheel="RecordingLyrics_MouseWheel">
+                     <StackPanel>
+                        <DockPanel><Button x:Name="SelectCurrentLineButton" Content="整句" DockPanel.Dock="Left" Click="SelectRecordingLine_Click" Padding="5,1" Margin="0,3,6,2" />
+                        <TextBlock x:Name="CurrentRecordingLabel" Text="当前句" Foreground="#687782" FontSize="11" Margin="0,5,0,2" /></DockPanel>
                         <ScrollViewer x:Name="CurrentLineScroll" PreviewMouseWheel="RecordingLyrics_MouseWheel" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
                             <controls:RecordingLyricLine x:Name="CurrentRecordingLine" />
                         </ScrollViewer>
-                        <TextBlock x:Name="NextRecordingLabel" Text="下一句" Foreground="#687782" FontSize="11" Margin="0,5,0,2" />
+                        <DockPanel><Button x:Name="SelectNextLineButton" Content="整句" DockPanel.Dock="Left" Click="SelectRecordingLine_Click" Padding="5,1" Margin="0,3,6,2" />
+                        <TextBlock x:Name="NextRecordingLabel" Text="下一句" Foreground="#687782" FontSize="11" Margin="0,5,0,2" /></DockPanel>
                         <ScrollViewer x:Name="NextLineScroll" PreviewMouseWheel="RecordingLyrics_MouseWheel" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
                             <controls:RecordingLyricLine x:Name="NextRecordingLine" />
                         </ScrollViewer>
+                        <StackPanel x:Name="AdditionalRecordingRows" />
+                     </StackPanel>
+                    </ScrollViewer>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                     <StackPanel>
                         <TextBlock x:Name="RecordingContextText" Foreground="#5D707B" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,4" />
                         <StackPanel x:Name="QuickEditPanel" Visibility="Collapsed" Margin="0,2,0,6">
                             <TextBlock x:Name="QuickEditHint" Foreground="#5D707B" TextWrapping="Wrap" FontSize="11" />
@@ -289,7 +324,7 @@
                                 <Button Content="收起" Click="QuickEditClose_Click" Padding="8,4" Margin="0,3,0,0" />
                             </WrapPanel>
                         </StackPanel>
-                        <WrapPanel>
+                        <WrapPanel x:Name="RecordingSingleEditActions">
                             <Button Content="编辑整句…" Click="EditRecordingSentence_Click" Padding="8,4" Margin="0,0,6,4" />
                             <Button Content="单元精修…" Click="EditRecordingUnits_Click" Padding="8,4" Margin="0,0,6,4" />
                             <Button Content="语言 / 片段…" Click="EditLanguageRegions_Click" Padding="8,4" Margin="0,0,6,4" />
@@ -308,8 +343,9 @@
                                       Checked="ShowRomanizationChanged" Unchecked="ShowRomanizationChanged" />
                         </WrapPanel>
 
-                    </StackPanel>
-                  </ScrollViewer>
+                     </StackPanel>
+                    </ScrollViewer>
+                  </Grid>
                 </Border>
                 <WrapPanel Grid.Row="1" Margin="0,8,0,0">
                     <Button Click="PlayPauseButton_Click" Content="播放 / 暂停（P）" Margin="0,0,6,4" />
@@ -324,6 +360,18 @@
               <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <ContentControl x:Name="RecordingMonitorHost" Height="174" Margin="0,0,0,12" />
+                    <GroupBox Header="角色分配" Margin="0,0,0,12">
+                     <StackPanel x:Name="RecordingRolePanel" Margin="7">
+                      <TextBlock x:Name="RoleSelectionText" Text="未选择时作用于浏览句" TextWrapping="Wrap" />
+                      <TextBlock Text="点“整句”或单元选择 · Ctrl 增减 / Shift 连选" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,4" />
+                      <WrapPanel x:Name="RoleAssignmentChoices" />
+                      <WrapPanel Margin="0,6,0,0">
+                       <Button Content="应用角色" Click="AssignRoles_Click" Margin="0,0,5,4" />
+                       <Button Content="恢复整句角色" Click="InheritRoles_Click" Margin="0,0,0,4" />
+                      </WrapPanel>
+                      <TextBlock Text="不勾选任何角色 = 标准样式；多选时暂停单字编辑。" FontSize="11" Foreground="#687782" TextWrapping="Wrap" />
+                     </StackPanel>
+                    </GroupBox>
 
                     <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#34424D" Text="卡拉 OK 打轴 · 空格记录下一个演唱单元" TextWrapping="Wrap" />
                     <StackPanel Margin="0,10,0,6">
@@ -464,9 +512,12 @@
                          Text="视频片段共用一条轨道，不能相互重叠；原声随片段移动，可单独静音。" />
             </Grid>
           </TabItem>
-          <TabItem Header="字幕样式">
+          <TabItem x:Name="SubtitleStyleTab" Header="字幕样式">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Margin="20" Loaded="SubtitleStyleEditor_Loaded">
+                <TextBlock Text="编辑对象（切换前自动应用当前参数）" Margin="0,0,0,5" />
+                <ComboBox x:Name="SubtitleStyleTargetCombo" DisplayMemberPath="Name" SelectionChanged="SubtitleStyleTarget_Changed"
+                          Width="320" HorizontalAlignment="Left" Margin="0,0,0,12" />
                 <TextBlock Foreground="#5D707B" TextWrapping="Wrap" Margin="0,0,0,16"
                            Text="底部双句布局：左上与右下交替，字幕区域随字号向上扩展，不再限制为下方 30%。日语默认在汉字上方标假名；开启罗马音后替代假名注音。" />
                 <CheckBox x:Name="StyleShowRomajiCheckBox" Content="显示日语罗马音（替代汉字假名注音，与打轴页同步）" Foreground="#34424D" Margin="0,0,0,14"
@@ -478,6 +529,8 @@
                     <TextBlock Foreground="#687782" TextWrapping="Wrap" Margin="0,6,0,0" Text="内置预设只改配色和描边；我的样式恢复全部参数。选择后可继续精调，点击“应用字幕样式”生效。" />
                   </StackPanel>
                   <Button x:Name="ApplySubtitleStyleButton" VerticalAlignment="Top" Margin="0,20,0,14" Padding="20,8" Click="ApplySubtitleStyleButton_Click" Content="应用字幕样式" />
+                  <Button x:Name="SaveEditedRoleButton" VerticalAlignment="Top" Margin="8,20,0,14" Padding="20,8"
+                          Click="SaveEditedRole_Click" Content="保存为常用角色" IsEnabled="False" />
                 </WrapPanel>
                 <WrapPanel Margin="0,0,0,8">
                     <TextBlock Text="样式名称" VerticalAlignment="Center" Margin="0,0,8,6" />
@@ -564,7 +617,7 @@
                     </ComboBox>
                     <ProgressBar x:Name="OperationProgress" Maximum="100" Height="16" Margin="12,0" />
                   </DockPanel>
-                  <WrapPanel Grid.Row="1" Margin="0,6,0,0">
+                  <WrapPanel x:Name="ExportFormatPanel" Grid.Row="1" Margin="0,6,0,0">
                     <TextBlock Foreground="#687782" Text="画幅比例" VerticalAlignment="Center" />
                     <ComboBox x:Name="ExportAspectRatioCombo" Width="112" SelectedIndex="0" Margin="8,0,14,0" IsEnabled="False" SelectionChanged="ExportFormatCombo_SelectionChanged">
                         <ComboBoxItem Content="16:9 · 横屏" /><ComboBoxItem Content="4:3 · 横屏" />

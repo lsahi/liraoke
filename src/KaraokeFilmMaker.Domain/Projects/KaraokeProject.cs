@@ -46,10 +46,12 @@ public sealed record KaraokeProject(
     int VideoTrackCount = 1,
     MetronomeSettings? Metronome = null)
 {
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
     public const int MaximumVideoTracks = 1;
 
     public bool AudioVisualizationEnabled { get; init; }
+    public SongTitleSettings SongTitle { get; init; } = new();
+    public IReadOnlyList<SingingRole> Roles { get; init; } = [];
     // Only successfully generated full-song files are registered. They are not library assets.
     public IReadOnlyList<Accompaniment> Accompaniments { get; init; } = [];
 

@@ -124,8 +124,8 @@ public sealed class LanguageAnalysisService(LanguageRegistry registry)
                 // Unknown language uses the host's plain units; uncertainty is not a policy failure.
                 HasBlockingIssue = span.LanguageId != LanguageIds.Unknown && result.NeedsReview };
         }
-        var rebuilt = line with { LanguageSpans = outputSpans, Units = units.OrderBy(unit => unit.Timing.Start)
-            .ThenBy(unit => unit.DisplayRanges.Min(range => range.Start)).ToArray(),
+        var rebuilt = line with { LanguageSpans = outputSpans, Units = KaraokeFilmMaker.Application.Lyrics.RoleAssignments.Transfer(line,
+            units.OrderBy(unit => unit.Timing.Start).ThenBy(unit => unit.DisplayRanges.Min(range => range.Start)).ToArray()),
             ReadingSource = outputSpans.Any(span => span.ManualReading is not null) ? ReadingSource.Manual : ReadingSource.Generated,
             ReviewState = outputSpans.Any(span => span.NeedsReview) ? ReviewState.ReviewLater : ReviewState.Unreviewed };
         bool allJapanese = outputSpans.All(span => span.LanguageId == LanguageIds.Japanese);

@@ -10,6 +10,7 @@ namespace KaraokeFilmMaker.App.Controls;
 public sealed class SubtitleOverlay : FrameworkElement
 {
     private readonly WpfSubtitlePainter _painter = new();
+    private readonly WpfSongTitlePainter _titlePainter = new();
     private readonly SubtitleSceneBuilder _sceneBuilder = new();
     private KaraokeProject? _project;
     private ProjectTime _time;
@@ -32,7 +33,8 @@ public sealed class SubtitleOverlay : FrameworkElement
         if (_project is not null)
         {
             _painter.Draw(drawingContext, _sceneBuilder.Build(_project.Lyrics, _time),
-                _project.SubtitleStyle, ActualWidth, ActualHeight);
+                _project.SubtitleStyle, ActualWidth, ActualHeight, _project.Roles);
+            _titlePainter.Draw(drawingContext, _project, ActualWidth, ActualHeight);
         }
     }
 }

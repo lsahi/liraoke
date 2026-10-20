@@ -14,6 +14,7 @@ public sealed class WpfSubtitleFrameRenderer : ISubtitleFrameRenderer, IAsyncDis
     private readonly AudioVisualizationData? _audioVisualization;
     private readonly WpfAudioVisualizationPainter _audioVisualizationPainter = new();
     private readonly WpfSubtitlePainter _painter = new();
+    private readonly WpfSongTitlePainter _titlePainter = new();
     private readonly SubtitleSceneBuilder _sceneBuilder = new();
     private readonly TaskCompletionSource<Dispatcher> _dispatcherReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -70,7 +71,8 @@ public sealed class WpfSubtitleFrameRenderer : ISubtitleFrameRenderer, IAsyncDis
             {
                 _audioVisualizationPainter.Draw(context, _audioVisualization, time, width, height, _project.AudioVisualizationStyle);
             }
-            _painter.Draw(context, _sceneBuilder.Build(_project.Lyrics, time), _project.SubtitleStyle, width, height);
+            _painter.Draw(context, _sceneBuilder.Build(_project.Lyrics, time), _project.SubtitleStyle, width, height, _project.Roles);
+            _titlePainter.Draw(context, _project, width, height);
         }
 
         if (_bitmap is null || _bitmap.PixelWidth != width || _bitmap.PixelHeight != height)

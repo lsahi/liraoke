@@ -12,7 +12,7 @@ public partial class MainWindow
 {
     private bool CanEditRecordingStructure()
     {
-        if (_workspace is null || _isBusy || !CanLeaveSourceLyricEdit() || !CanLeaveQuickEdit()) { return false; }
+        if (_roleMultiSelection || _workspace is null || _isBusy || !CanLeaveSourceLyricEdit() || !CanLeaveQuickEdit()) { return false; }
         if (_markers.Count > 0 || _undoneMarkers.Count > 0)
         {
             StatusText.Text = "整句 / 分组 / 增删操作可能改变演唱单元，请先应用或明确清空本次打点。仍可点击单元快捷修正文字和读音，或在单元边界换行/合并。";

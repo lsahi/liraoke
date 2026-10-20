@@ -104,8 +104,7 @@ public sealed class SubtitleSceneBuilder
                 group.First().DisplayRanges.Distinct().OrderBy(range => range.Start).ThenBy(range => range.Length).ToArray(),
                 group.Average(unit => Progress(unit.Timing, time))))
             .ToList();
-        highlights.AddRange(LyricPunctuationHighlights.Build(line, time));
-        return highlights;
+        return LyricPunctuationHighlights.Attach(line, highlights);
     }
 
     private static double Progress(TimeRange timing, ProjectTime time)

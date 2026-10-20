@@ -13,11 +13,13 @@ public sealed class WpfSubtitlePainter
     private readonly Dictionary<LayoutKey, TextLayout> _layouts = [];
     private readonly Dictionary<string, Brush> _brushes = [];
     private readonly WpfJapaneseSubtitlePainter _japanese = new();
+    private readonly WpfRoleSubtitlePainter _roles = new();
     private readonly WpfSubtitleHighlightPainter _highlightPainter = new();
     private (SubtitleStyle Style, double Width, double Height)? _placementKey;
     private SubtitlePlacement? _placement;
 
-    public void Draw(DrawingContext context, SubtitleScene scene, SubtitleStyle style, double width, double height)
+    public void Draw(DrawingContext context, SubtitleScene scene, SubtitleStyle style, double width, double height,
+        IReadOnlyList<SingingRole>? roles = null)
     {
         if (width <= 0 || height <= 0)
         {
@@ -25,10 +27,14 @@ public sealed class WpfSubtitlePainter
         }
 
         double scale = Math.Min(width, height) / 1080;
-        if (_placementKey != (style, width, height))
+        var usedIds = scene.Lines.SelectMany(item => item.Line.RoleIds.Concat(item.Line.Units.SelectMany(unit => unit.RoleIds ?? []))).ToHashSet();
+        var usedStyles = (roles ?? []).Where(role => usedIds.Contains(role.Id)).Select(role => role.Style).Prepend(style).ToArray();
+        var layoutStyle = style with { PrimaryFontSize = usedStyles.Max(s => s.PrimaryFontSize), AnnotationFontSize = usedStyles.Max(s => s.AnnotationFontSize),
+            LineGap = usedStyles.Max(s => s.LineGap), OutlineWidth = usedStyles.Max(s => s.OutlineWidth), ShadowOffset = usedStyles.Max(s => s.ShadowOffset) };
+        if (_placementKey != (layoutStyle, width, height))
         {
-            _placement = SubtitlePlacement.Create(style, width, height);
-            _placementKey = (style, width, height);
+            _placement = SubtitlePlacement.Create(layoutStyle, width, height);
+            _placementKey = (layoutStyle, width, height);
         }
         var placement = _placement!;
         double margin = placement.Margin;
@@ -42,6 +48,8 @@ public sealed class WpfSubtitlePainter
         context.PushClip(new RectangleGeometry(new Rect(0, 0, width, height)));
         foreach (SubtitleLineScene item in scene.Lines)
         {
+            if (roles is { Count: > 0 } && (item.Line.RoleIds.Count > 0 || item.Line.Units.Any(unit => unit.RoleIds is { Count: > 0 })))
+            { _roles.Draw(context, item, style, roles, width, height, placement); continue; }
             bool hasSnapshot = LyricPresentationLayout.HasCurrentSnapshot(item.Line);
             string annotation = Annotation(item.Line);
             // Explicit whole-line pinyin/translation remains one auxiliary line. It must not be

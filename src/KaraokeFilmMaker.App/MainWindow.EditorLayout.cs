@@ -33,8 +33,9 @@ public partial class MainWindow
         RefreshAudioVisualizationPreview(_playback.Position);
         RefreshLyricPreview(_playback.Position);
         ProjectTimeline.ShowLyricUnits = IsRecordingMode;
-        TimelineRow.Height = new GridLength(IsPreviewMode ? 344 : 280);
+        TimelineRow.Height = new GridLength(IsPreviewMode ? 344 : IsRecordingMode ? 180 : 280);
         WorkAreaPanel.Visibility = IsPreviewMode ? Visibility.Visible : Visibility.Collapsed;
+        ExportFormatPanel.Visibility = IsRecordingMode ? Visibility.Collapsed : Visibility.Visible;
         ClipToolsPanel.Visibility = IsPreviewMode ? Visibility.Visible : Visibility.Collapsed;
         ProjectTimeline.Update(_workspace?.Project, _playback.Position);
         MonitorShortcutText.Text = IsRecordingMode

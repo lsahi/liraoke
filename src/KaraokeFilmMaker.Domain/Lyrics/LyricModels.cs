@@ -60,7 +60,11 @@ public sealed record LyricUnit(
     TimeRange Timing,
     ProjectTime? RawInputTime,
     bool IsConfirmed,
-    string? LanguageId = null);
+    string? LanguageId = null)
+{
+    // Null inherits the line; an empty list explicitly selects the standard (no-role) style.
+    public IReadOnlyList<Guid>? RoleIds { get; init; }
+}
 
 public sealed record LyricLine(
     Guid Id,
@@ -77,7 +81,10 @@ public sealed record LyricLine(
     string? ReadingText = null,
     string? RomanizationText = null,
     IReadOnlyList<LyricLanguageSpan>? LanguageSpans = null,
-    LyricPresentationSnapshot? Presentation = null);
+    LyricPresentationSnapshot? Presentation = null)
+{
+    public IReadOnlyList<Guid> RoleIds { get; init; } = [];
+}
 
 public sealed record LyricDocument(
     LyricLanguage Language,

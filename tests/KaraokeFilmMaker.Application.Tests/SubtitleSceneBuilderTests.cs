@@ -9,7 +9,7 @@ public sealed class SubtitleSceneBuilderTests
     private readonly SubtitleSceneBuilder _builder = new();
 
     [Fact]
-    public void PunctuationCompletesAtNextWordStartOrLastWordEndWithoutAddingSingingUnits()
+    public void PunctuationSharesPrecedingWordSweepWithoutAddingSingingUnits()
     {
         LyricLine line = Line("\"La, la?!\"", 0, 10) with
         {
@@ -17,16 +17,17 @@ public sealed class SubtitleSceneBuilderTests
         };
         string original = System.Text.Json.JsonSerializer.Serialize(line);
         Assert.Equal(0, PunctuationProgress(line, 0, 1.999999));
-        Assert.Equal(1, PunctuationProgress(line, 0, 2));
-        Assert.Equal(0, PunctuationProgress(line, 3, 4.999999));
+        Assert.Equal(0, PunctuationProgress(line, 0, 2));
+        Assert.Equal(0.5, PunctuationProgress(line, 3, 2.5));
+        Assert.Equal(1, PunctuationProgress(line, 3, 3));
         Assert.Equal(1, PunctuationProgress(line, 3, 5));
         Assert.Equal(0, _builder.BuildHighlights(line, ProjectTime.FromSeconds(5))
-            .Single(highlight => highlight.DisplayRanges.Contains(new TextRange(5, 2))).Progress);
+            .Single(highlight => highlight.DisplayRanges.Contains(new TextRange(5, 5))).Progress);
         Assert.Equal(0.5, _builder.BuildHighlights(line, ProjectTime.FromSeconds(6))
-            .Single(highlight => highlight.DisplayRanges.Contains(new TextRange(5, 2))).Progress);
+            .Single(highlight => highlight.DisplayRanges.Contains(new TextRange(5, 5))).Progress);
         foreach (int trailingIndex in new[] { 7, 8, 9 })
         {
-            Assert.Equal(0, PunctuationProgress(line, trailingIndex, 6.999999));
+            Assert.Equal(0.5, PunctuationProgress(line, trailingIndex, 6));
             Assert.Equal(1, PunctuationProgress(line, trailingIndex, 7));
         }
         Assert.Equal(original, System.Text.Json.JsonSerializer.Serialize(line));
@@ -43,10 +44,10 @@ public sealed class SubtitleSceneBuilderTests
         {
             Units = [Unit(new TextRange(1, 1), 2, 3), Unit(new TextRange(3, 1), 5, 7)],
         };
-        Assert.Equal(1, PunctuationProgress(line, 0, 2));
-        Assert.Equal(0, PunctuationProgress(line, 2, 4.999999));
+        Assert.Equal(0, PunctuationProgress(line, 0, 2));
+        Assert.Equal(0.5, PunctuationProgress(line, 2, 2.5));
         Assert.Equal(1, PunctuationProgress(line, 2, 5));
-        Assert.Equal(0, PunctuationProgress(line, 4, 6.999999));
+        Assert.Equal(0.5, PunctuationProgress(line, 4, 6));
         Assert.Equal(1, PunctuationProgress(line, 4, 7));
         Assert.Equal(1, PunctuationProgress(line, 5, 7));
     }
@@ -59,8 +60,9 @@ public sealed class SubtitleSceneBuilderTests
             Units = [Unit(new TextRange(1, 2), 2, 3), Unit(new TextRange(1, 2), 3, 4),
                 Unit(new TextRange(5, 1), 6, 8)],
         };
-        Assert.Equal(1, PunctuationProgress(line, 0, 2));
-        Assert.Equal(0, PunctuationProgress(line, 3, 4));
+        Assert.Equal(0, PunctuationProgress(line, 0, 2));
+        Assert.Equal(0.5, PunctuationProgress(line, 3, 3));
+        Assert.Equal(1, PunctuationProgress(line, 3, 4));
         Assert.Equal(1, PunctuationProgress(line, 3, 6));
         Assert.Equal(1, PunctuationProgress(line, 4, 6));
         Assert.Equal(1, PunctuationProgress(line, 6, 8));
@@ -89,7 +91,7 @@ public sealed class SubtitleSceneBuilderTests
             Units = [Unit(new TextRange(0, 1), 2, 3), Unit(new TextRange(3, 1), 5, 7)],
         };
         var punctuation = Assert.Single(_builder.BuildHighlights(line, ProjectTime.FromSeconds(5)),
-            highlight => highlight.DisplayRanges.Contains(new TextRange(1, 2)));
+            highlight => highlight.DisplayRanges.Contains(new TextRange(0, 3)));
         Assert.Equal(1, punctuation.Progress);
     }
 
@@ -101,8 +103,8 @@ public sealed class SubtitleSceneBuilderTests
             Units = [Unit(new TextRange(0, 1), 2, 3), Unit(new TextRange(2, 1), 5, 7)],
         };
         Assert.Equal(1, PunctuationProgress(line, 1, 5));
-        var changed = line with { Units = [line.Units[0], line.Units[1] with
-            { Timing = new TimeRange(ProjectTime.FromSeconds(6), ProjectTime.FromSeconds(7)) }] };
+        var changed = line with { Units = [line.Units[0] with
+            { Timing = new TimeRange(ProjectTime.FromSeconds(5), ProjectTime.FromSeconds(6)) }, line.Units[1]] };
         Assert.Equal(0, PunctuationProgress(changed, 1, 5));
         Assert.Equal(1, PunctuationProgress(changed, 1, 6));
     }

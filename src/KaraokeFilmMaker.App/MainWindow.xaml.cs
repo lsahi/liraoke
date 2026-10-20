@@ -60,6 +60,7 @@ public partial class MainWindow : Window
         _recoveryTimer.Start();
         CurrentRecordingLine.UnitSelected += RecordingUnitSelected;
         NextRecordingLine.UnitSelected += RecordingUnitSelected;
+        SongTitleEditor.ApplyRequested += ApplySongTitle;
         RefreshMetronomeFields();
         RefreshWorkAreaFields();
         RefreshAccompanimentState();
@@ -467,7 +468,7 @@ public partial class MainWindow : Window
     {
         for (DependencyObject? current = focused; current is not null;)
         {
-            if (current is ComboBox or ComboBoxItem or Controls.ColorField) { return true; }
+            if (current is ComboBox or ComboBoxItem or CheckBox or Controls.ColorField or Controls.SongTitleEditor) { return true; }
             current = current is System.Windows.Media.Visual
                 ? System.Windows.Media.VisualTreeHelper.GetParent(current)
                 : LogicalTreeHelper.GetParent(current);
@@ -597,6 +598,8 @@ public partial class MainWindow : Window
 
     private void RefreshWorkspaceDisplay()
     {
+        SongTitleEditor.Load(_workspace?.Project);
+        RefreshRoleControls();
         RefreshAccompanimentState();
         RefreshMediaLibrary();
         if (_workspace is null)

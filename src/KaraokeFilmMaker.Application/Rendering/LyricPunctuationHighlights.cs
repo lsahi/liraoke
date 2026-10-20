@@ -1,54 +1,52 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using KaraokeFilmMaker.Domain.Lyrics;
-using KaraokeFilmMaker.Domain.Time;
 
 namespace KaraokeFilmMaker.Application.Rendering;
 
 /// <summary>
-/// Punctuation has no singing unit of its own. Its display-only completion follows the next
-/// mapped unit's start, or the last sung unit's end for trailing punctuation. Both preview and
-/// export consume these highlights, independently of language/presentation plugins.
+/// Unmapped punctuation shares the preceding display group's entire sweep, without changing timing units.
 /// </summary>
 internal static class LyricPunctuationHighlights
 {
-    // Edited/retimed lines are new immutable records. Avoid re-scanning Unicode and mappings
-    // on every preview frame while letting old line instances be collected normally.
-    private static readonly ConditionalWeakTable<LyricLine, PunctuationMap> Maps = new();
-
-    public static IEnumerable<SubtitleHighlight> Build(LyricLine line, ProjectTime time) =>
-        Maps.GetValue(line, CreateMap).Entries
-            .Where(entry => time >= entry.CompletedAt)
-            .Select(entry => new SubtitleHighlight([entry.Range], 1));
-
-    private static PunctuationMap CreateMap(LyricLine line)
+    private static readonly ConditionalWeakTable<LyricLine, Map> Maps = new();
+    public static IReadOnlyList<SubtitleHighlight> Attach(LyricLine line, IReadOnlyList<SubtitleHighlight> highlights)
     {
-        var mappings = line.Units.SelectMany(unit => unit.DisplayRanges
-            .Where(range => range.Start >= 0 && range.Length > 0 && range.EndExclusive <= line.PrimaryText.Length)
-            .Select(range => (Range: range, Start: unit.Timing.Start)))
-            .OrderBy(mapping => mapping.Range.Start).ThenBy(mapping => mapping.Start).ToArray();
-        if (mappings.Length == 0) { return new([]); }
-
-        ProjectTime completed = line.Units.Max(unit => unit.Timing.End);
-        List<Entry> entries = [];
+        var map = Maps.GetValue(line, _ => CreateMap(line, highlights));
+        return highlights.Select((highlight, i) => highlight with { DisplayRanges = map.Ranges[i] }).ToArray();
+    }
+    private static Map CreateMap(LyricLine line, IReadOnlyList<SubtitleHighlight> highlights)
+    {
+        var ranges = highlights.Select(highlight => highlight.DisplayRanges.ToList()).ToArray();
+        var source = highlights.SelectMany((highlight, index) => highlight.DisplayRanges.Select(range => (Range: range, Index: index))).ToArray();
         int cursor = 0;
         foreach (Rune rune in line.PrimaryText.EnumerateRunes())
         {
             int end = cursor + rune.Utf16SequenceLength;
-            // Apostrophes/hyphens inside a mapped word retain that word's continuous sweep.
-            // Only unmapped punctuation is completed automatically; never uncovered lyrics.
-            if (Rune.IsPunctuation(rune) && !mappings.Any(mapping =>
-                mapping.Range.Start < end && mapping.Range.EndExclusive > cursor))
+            if (Rune.IsPunctuation(rune) && !source.Any(item => item.Range.Start < end && cursor < item.Range.EndExclusive))
             {
-                var following = Array.FindIndex(mappings, mapping => mapping.Range.Start >= end);
-                entries.Add(new(new TextRange(cursor, rune.Utf16SequenceLength),
-                    following >= 0 ? mappings[following].Start : completed));
+                var before = source.Where(item => item.Range.EndExclusive <= cursor).OrderByDescending(item => item.Range.EndExclusive).ToArray();
+                var after = source.Where(item => item.Range.Start >= end).OrderBy(item => item.Range.Start).ToArray();
+                if (before.Length > 0 && OnlySeparators(line.PrimaryText[before[0].Range.EndExclusive..cursor]))
+                    ranges[before[0].Index].Add(new(cursor, rune.Utf16SequenceLength));
+                else if (before.Length == 0 && after.Length > 0 && OnlySeparators(line.PrimaryText[end..after[0].Range.Start]))
+                    ranges[after[0].Index].Add(new(cursor, rune.Utf16SequenceLength));
             }
             cursor = end;
         }
-        return new(entries);
+        return new(ranges.Select(Merge).ToArray());
     }
-
-    private sealed record Entry(TextRange Range, ProjectTime CompletedAt);
-    private sealed record PunctuationMap(IReadOnlyList<Entry> Entries);
+    private static bool OnlySeparators(string value) => value.EnumerateRunes().All(rune => Rune.IsWhiteSpace(rune) || Rune.IsPunctuation(rune));
+    private static IReadOnlyList<TextRange> Merge(List<TextRange> ranges)
+    {
+        List<TextRange> result = [];
+        foreach (var range in ranges.OrderBy(range => range.Start))
+        {
+            if (result.Count > 0 && range.Start <= result[^1].EndExclusive)
+                result[^1] = new(result[^1].Start, Math.Max(result[^1].EndExclusive, range.EndExclusive) - result[^1].Start);
+            else result.Add(range);
+        }
+        return result;
+    }
+    private sealed record Map(IReadOnlyList<IReadOnlyList<TextRange>> Ranges);
 }

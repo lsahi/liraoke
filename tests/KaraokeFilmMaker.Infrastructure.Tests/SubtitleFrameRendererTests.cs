@@ -62,16 +62,19 @@ public sealed class SubtitleFrameRendererTests
         var beforeFirst = await renderer.RenderAsync(ProjectTime.FromSeconds(1.999999), 1920, 1080);
         var firstStart = await renderer.RenderAsync(ProjectTime.FromSeconds(2), 1920, 1080);
         Assert.Equal(0, CountGold(beforeFirst));
-        Assert.True(CountGold(firstStart) > 3, "The opening quote must already be gold at the first word's exact start.");
+        Assert.Equal(0, CountGold(firstStart));
+        var firstMiddle = await renderer.RenderAsync(ProjectTime.FromSeconds(2.5), 1920, 1080);
+        var firstComplete = await renderer.RenderAsync(ProjectTime.FromSeconds(3), 1920, 1080);
+        Assert.True(CountGold(firstMiddle) > 3);
+        Assert.True(CountGold(firstComplete) > CountGold(firstMiddle) + 3);
 
         var beforeSecond = await renderer.RenderAsync(ProjectTime.FromSeconds(4.999999), 1920, 1080);
         var secondStart = await renderer.RenderAsync(ProjectTime.FromSeconds(5), 1920, 1080);
-        Assert.True(CountGold(secondStart) > CountGold(beforeSecond) + 3,
-            "Only the comma changes at this boundary: it must be gold when the next word starts.");
-        var beforeComplete = await renderer.RenderAsync(ProjectTime.FromSeconds(6.999999), 1920, 1080);
+        Assert.Equal(beforeSecond.BgraPixels.ToArray(), secondStart.BgraPixels.ToArray());
+        var beforeComplete = await renderer.RenderAsync(ProjectTime.FromSeconds(6.5), 1920, 1080);
         var complete = await renderer.RenderAsync(ProjectTime.FromSeconds(7), 1920, 1080);
         Assert.True(CountGold(complete) > CountGold(beforeComplete) + 3,
-            "Trailing punctuation completes with the last word, not the later line end.");
+            "The final word and punctuation sweep continuously over one shared time range.");
         Assert.Equal(0, CountVisibleWhite(complete, 0, complete.Height));
         var seekBack = await renderer.RenderAsync(ProjectTime.FromSeconds(5), 1920, 1080);
         Assert.Equal(secondStart.BgraPixels.ToArray(), seekBack.BgraPixels.ToArray());
