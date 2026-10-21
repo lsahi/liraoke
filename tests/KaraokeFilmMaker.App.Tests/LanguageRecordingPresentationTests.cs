@@ -12,6 +12,34 @@ namespace KaraokeFilmMaker.App.Tests;
 public sealed class LanguageRecordingPresentationTests
 {
     [Fact]
+    public Task PartiallyOverlappingKanaSourceLabelsDoNotDuplicateKanji() => RunSta(() =>
+    {
+        var first = Unit(new(0, 1), "か");
+        var second = Unit(new(0, 2), "えっ");
+        var third = Unit(new(2, 1), "て");
+        var line = new LyricLine(Guid.NewGuid(), "帰って", AnnotationType.Kana, null, null,
+            new(ProjectTime.Zero, ProjectTime.FromSeconds(4)), [first, second, third], ReviewState.Unreviewed, null);
+        line = line with { Presentation = KaraokeFilmMaker.Application.Languages.LanguagePresentation.BuildJapanese(line) };
+        var strip = new RecordingLyricLine();
+        strip.Update(line, LyricLanguage.Auto, false, 1, 1, null);
+        Render(strip);
+        var originals = (IEnumerable<(string Text, double X, double Width, bool Secondary)>)Field("_originals").GetValue(strip)!;
+        Assert.Equal("帰って", string.Concat(originals.Select(o => o.Text)));
+        Assert.Equal(new[] { "か", "えっ", "て" }, CellValues(strip, "Text"));
+        var root = Environment.GetEnvironmentVariable("KFM_RENDER_SNAPSHOT_DIR");
+        if (!string.IsNullOrWhiteSpace(root))
+        {
+            Directory.CreateDirectory(root);
+            var bitmap = new RenderTargetBitmap(600, 100, 96, 96, PixelFormats.Pbgra32); bitmap.Render(strip);
+            var background = new DrawingVisual();
+            using (var drawing = background.RenderOpen()) drawing.DrawRectangle(Brushes.White, null, new Rect(0, 0, 600, 100));
+            bitmap.Render(background); bitmap.Render(strip);
+            var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = File.Create(Path.Combine(root, "recording-shared-kanji.png")); png.Save(stream);
+        }
+    });
+
+    [Fact]
     public async Task MixedCellsUsePersistedLabelsAndSharedJapaneseOriginalOnlyOnce()
     {
         await RunSta(() =>

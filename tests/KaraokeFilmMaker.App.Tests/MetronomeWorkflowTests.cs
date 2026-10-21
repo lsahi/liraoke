@@ -249,6 +249,21 @@ public sealed class MetronomeWorkflowTests
         Assert.Single(fixture.Raw);
     });
 
+    [Fact]
+    public Task HiddenMetronomeDoesNotClickOrSnapButPreservesSavedSettings() => Sta(async () =>
+    {
+        using var fixture = await Fixture.Create();
+        var saved = new MetronomeSettings(true, 120, 100);
+        fixture.Project = fixture.Project with { Metronome = saved };
+        ((Border)fixture.Window.FindName("MetronomeSection")).Visibility = Visibility.Collapsed;
+        await fixture.Task("SynchronizeMetronomeAsync");
+        Assert.False(fixture.Playback.Settings.Enabled);
+        Assert.Equal(saved, fixture.Project.Metronome);
+        Assert.True((bool)fixture.Call("RecordMarker", ProjectTime.FromSeconds(.333))!);
+        Assert.Equal(ProjectTime.FromSeconds(.333), Assert.Single(fixture.Markers));
+        Assert.Equal(saved, fixture.Project.Metronome);
+    });
+
     private sealed class Fixture : IDisposable
     {
         public MainWindow Window { get; } = new();
@@ -263,6 +278,8 @@ public sealed class MetronomeWorkflowTests
         public static async Task<Fixture> Create()
         {
             var fixture = new Fixture();
+            // Retained experimental workflow, deliberately revealed only in this test fixture.
+            ((Border)fixture.Window.FindName("MetronomeSection")).Visibility = Visibility.Visible;
             ((DispatcherTimer)Field("_uiTimer").GetValue(fixture.Window)!).Stop();
             ((DispatcherTimer)Field("_recoveryTimer").GetValue(fixture.Window)!).Stop();
             await ((IAudioPlaybackSession)Field("_playback").GetValue(fixture.Window)!).DisposeAsync();

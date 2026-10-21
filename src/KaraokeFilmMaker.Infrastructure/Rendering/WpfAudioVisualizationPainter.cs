@@ -20,13 +20,7 @@ public sealed class WpfAudioVisualizationPainter
     {
         if (data is null || !double.IsFinite(width) || !double.IsFinite(height) || width <= 0 || height <= 0) { return; }
         if (time.TotalSeconds >= data.DurationSeconds) { return; }
-        if (style == AudioVisualizationStyle.Fireworks)
-        {
-            context.PushClip(new RectangleGeometry(new Rect(0, 0, width, height)));
-            DrawFireworks(context, data, time, width, height);
-            context.Pop();
-            return;
-        }
+        if (!style.IsAvailable()) { return; }
         Span<float> bands = stackalloc float[AudioVisualizationData.SpectrumBandCount];
         data.Sample(time, bands);
         if (style == AudioVisualizationStyle.RotatingRing)
@@ -91,42 +85,6 @@ public sealed class WpfAudioVisualizationPainter
             context.Pop();
         }
         context.Pop(); context.Pop();
-    }
-
-    private static void DrawFireworks(DrawingContext context, AudioVisualizationData data, ProjectTime time, double width, double height)
-    {
-        Span<FireworkBurst> bursts = stackalloc FireworkBurst[AudioVisualizationMotion.MaximumActiveBursts];
-        int count = AudioVisualizationMotion.SampleFireworks(data, time, bursts);
-        double shortSide = Math.Min(width, height);
-        for (int i = 0; i < count; i++)
-        {
-            var burst = bursts[i];
-            double age = time.TotalSeconds - burst.StartSeconds, progress = age / AudioVisualizationMotion.FireworkLifetime;
-            double opacity = Math.Min(1, age / 0.05) * Math.Pow(1 - progress, 1.5);
-            if (opacity <= 0) { continue; }
-            context.PushOpacity(opacity);
-            double maximum = shortSide * (0.07 + burst.Strength * 0.13);
-            double expansion = 1 - Math.Exp(-3.2 * progress);
-            var center = new Point(width * burst.X, height * burst.Y);
-            int particles = 28 + (int)(burst.Strength * 20);
-            for (int particle = 0; particle < particles; particle++)
-            {
-                double angle = Math.PI * 2 * (particle + AudioVisualizationMotion.Noise(burst.Seed, particle + 10) * 0.6) / particles;
-                double speed = 0.55 + AudioVisualizationMotion.Noise(burst.Seed, particle + 100) * 0.45;
-                double distance = maximum * expansion * speed;
-                double x = center.X + Math.Cos(angle) * distance;
-                double y = center.Y + Math.Sin(angle) * distance + shortSide * 0.025 * age * age;
-                double dot = Math.Max(0.65, shortSide * 0.0022 * (1 - progress * 0.6));
-                // All sparks are translucent white short bars, aligned radially with a fading tail.
-                context.PushTransform(new RotateTransform(angle * 180 / Math.PI + 90, x, y));
-                context.PushOpacity(0.35);
-                context.DrawRoundedRectangle(White, null, new Rect(x - dot * 0.4, y + dot * 2, dot * 0.8, dot * 4), dot * 0.4, dot * 0.4);
-                context.Pop();
-                context.DrawRoundedRectangle(White, null, new Rect(x - dot * 0.6, y - dot * 2, dot * 1.2, dot * 4), dot * 0.6, dot * 0.6);
-                context.Pop();
-            }
-            context.Pop();
-        }
     }
 
     private static Brush FrozenBrush(Color color)

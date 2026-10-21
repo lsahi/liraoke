@@ -51,6 +51,7 @@ public partial class MainWindow
                     }).ToArray(),
                 }).ToArray();
                 var updated = _workspace.Project with { Lyrics = _workspace.Project.Lyrics with { Lines = lines } };
+                LyricTimingConflicts.Validate(updated.Lyrics);
                 IReadOnlyList<string> errors = ProjectValidator.Validate(updated);
                 if (errors.Count > 0) { throw new InvalidOperationException(string.Join(Environment.NewLine, errors)); }
                 _workspace = _workspace with { Project = updated };
@@ -111,9 +112,23 @@ public partial class MainWindow
         if (!TryCorrectTapTime(raw, out ProjectTime corrected, endMarker)) { return false; }
         if (_markers.Count > 0 && corrected <= _markers[^1]
             || !endMarker && corrected.Microseconds >= _playback.Duration.Microseconds)
-        { StatusText.Text = CurrentMetronome.Enabled
+        { StatusText.Text = EffectiveMetronome.Enabled
             ? "新打点吸附到的拍点不晚于上一打点，或已到歌曲末尾。请在后一个拍子继续；也可关闭节拍器自由打轴，已有打点不变。"
             : "入口时间必须递增且在歌曲结束前；请播放歌曲后记录，或先退格撤销。"; return false; }
+        if (!endMarker && _unitTapTargets is { } targets
+            && (_markers.Count == 0 || targets[_markers.Count - 1].LineId != targets[_markers.Count].LineId))
+        {
+            // Pending rows will be validated together when applied. Only consult saved rows that
+            // this recording session is not replacing, so re-recording never uses stale anchors.
+            var pendingLines = targets.Take(_markers.Count).Select(target => target.LineId).ToHashSet();
+            var saved = _workspace.Project.Lyrics with
+            {
+                Lines = _workspace.Project.Lyrics.Lines.Select(line => pendingLines.Contains(line.Id)
+                    ? line with { Units = [] } : line).ToArray(),
+            };
+            if (LyricTimingConflicts.EntryIssue(saved, targets[_markers.Count].LineIndex, corrected) is { } issue)
+            { StatusText.Text = issue; return false; }
+        }
         _rawMarkers.Add(raw); _markers.Add(corrected); _undoneMarkers.Clear();
         if (_browsedRecordingLineId is not null) { ResumeRecordingFollow(); }
         return true;
@@ -131,10 +146,10 @@ public partial class MainWindow
         corrected = new ProjectTime(Math.Clamp(raw.Microseconds + offset * 1000L, 0, _playback.Duration.Microseconds));
         // A song can end between beats. Its real end is a valid terminal boundary,
         // never a new unit entry; otherwise the final word could not be completed.
-        if (CurrentMetronome.Enabled && isEndMarker
+        if (EffectiveMetronome.Enabled && isEndMarker
             && (raw.Microseconds >= _playback.Duration.Microseconds || corrected.Microseconds == _playback.Duration.Microseconds))
         { corrected = ProjectTime.Zero + _playback.Duration; return true; }
-        if (CurrentMetronome.Enabled && !MetronomeGrid.TrySnap(corrected, CurrentMetronome, _playback.Duration, out corrected))
+        if (EffectiveMetronome.Enabled && !MetronomeGrid.TrySnap(corrected, EffectiveMetronome, _playback.Duration, out corrected))
         { StatusText.Text = "当前歌曲范围内没有有效拍点，请检查节拍器的 BPM 和偏移。"; return false; }
         return true;
     }

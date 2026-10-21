@@ -84,6 +84,9 @@ public sealed record LyricLine(
     LyricPresentationSnapshot? Presentation = null)
 {
     public IReadOnlyList<Guid> RoleIds { get; init; } = [];
+    // Only an explicitly applied terminal tap authorizes overlap with the following row.
+    // Store the time as well as the intent, so changing the boundary cannot reuse stale consent.
+    public ProjectTime? ExplicitEndTime { get; init; }
 }
 
 public sealed record LyricDocument(

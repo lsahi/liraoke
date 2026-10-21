@@ -36,8 +36,8 @@ public class AccompanimentUiTests
             Field("_previewAccompaniment").SetValue(window, true); Call(window, "RefreshAccompanimentState");
             Assert.True((bool)Property("UsePreviewAccompaniment").GetValue(window)!);
             var inspector = (TabControl)window.FindName("PreviewInspectorTabs");
-            Assert.Equal(new[] { "节拍器", "伴奏", "曲名显示", "角色控制" }, inspector.Items.Cast<TabItem>().Select(t => t.Header.ToString()));
-            inspector.SelectedIndex = 1;
+            Assert.Equal(new[] { "生成伴奏", "曲名显示", "可视化", "角色控制", "节拍器" }, inspector.Items.Cast<TabItem>().Select(t => t.Header.ToString()));
+            inspector.SelectedIndex = 0;
             foreach (var size in new[] { new Size(1440, 940), new Size(1100, 760) })
             {
                 var content = (FrameworkElement)window.Content;

@@ -9,6 +9,9 @@ namespace KaraokeFilmMaker.App;
 public partial class MainWindow
 {
     private MetronomeSettings CurrentMetronome => _workspace?.Project.Metronome ?? new MetronomeSettings();
+    // Hidden in 0.5: preserve saved settings, but never silently click or snap without an accessible switch.
+    private MetronomeSettings EffectiveMetronome => MetronomeSection.Visibility == Visibility.Visible
+        ? CurrentMetronome : CurrentMetronome with { Enabled = false };
 
     private void RefreshMetronomeFields()
     {
@@ -63,6 +66,6 @@ public partial class MainWindow
     private async Task SynchronizeMetronomeAsync()
     {
         if (_playback is IMetronomePlaybackSession session)
-        { await session.ConfigureMetronomeAsync(CurrentMetronome, _operationCancellation?.Token ?? default); }
+        { await session.ConfigureMetronomeAsync(EffectiveMetronome, _operationCancellation?.Token ?? default); }
     }
 }

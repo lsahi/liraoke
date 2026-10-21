@@ -210,6 +210,26 @@ public sealed class MediaCreationWorkflowTests
     });
 
     [Fact]
+    public Task LegacyFireworksStayOffAndCanBeReplacedWithoutChangingLyrics() => Sta(async () =>
+    {
+        using var f = await Fixture.Create();
+        f.Project = f.Project with { AudioVisualizationEnabled = true, AudioVisualizationStyle = AudioVisualizationStyle.Fireworks };
+        var original = f.Project;
+        f.Refresh();
+        await f.Task("PrepareAudioVisualizationAsync", f.Project, false);
+        Assert.False(((CheckBox)f.Window.FindName("AudioVisualizationCheck")).IsChecked);
+        Assert.Contains("已停用", ((TextBlock)f.Window.FindName("AudioVisualizationStatusText")).Text);
+        Assert.Equal(Visibility.Collapsed, ((AudioVisualizationOverlay)f.Window.FindName("AudioVisualizationPreview")).Visibility);
+        Assert.Equal(original, f.Project);
+        await f.Task("SetAudioVisualizationStyleAsync", AudioVisualizationStyle.Fireworks);
+        Assert.Equal(original, f.Project);
+        await f.Task("SetAudioVisualizationAsync", true);
+        Assert.Equal(AudioVisualizationStyle.Classic, f.Project.AudioVisualizationStyle);
+        Assert.Equal(original.Lyrics, f.Project.Lyrics);
+        Assert.Equal(original.Metronome, f.Project.Metronome);
+    });
+
+    [Fact]
     public Task VisualizationStylesSwitchWithoutReanalysisAndPersistThroughUndo() => Sta(async () =>
     {
         using var f = await Fixture.Create();
@@ -222,8 +242,8 @@ public sealed class MediaCreationWorkflowTests
         f.Refresh(); await f.Task("SetAudioVisualizationAsync", true);
         var lyrics = f.Project.Lyrics; var metronome = f.Project.Metronome;
         var combo = (ComboBox)f.Window.FindName("AudioVisualizationStyleCombo");
-        Assert.Equal(5, combo.Items.Count);
-        foreach (var style in Enum.GetValues<AudioVisualizationStyle>())
+        Assert.Equal(4, combo.Items.Count);
+        foreach (var style in Enum.GetValues<AudioVisualizationStyle>().Where(style => style.IsAvailable()))
         {
             await f.Task("SetAudioVisualizationStyleAsync", style);
             Assert.Equal(style, f.Project.AudioVisualizationStyle);
@@ -233,15 +253,15 @@ public sealed class MediaCreationWorkflowTests
         }
         Assert.Equal(1, calls);
         await f.Task("RestoreHistoryAsync", false);
-        Assert.Equal(AudioVisualizationStyle.RotatingRing, f.Project.AudioVisualizationStyle);
+        Assert.Equal(AudioVisualizationStyle.CenterWhite, f.Project.AudioVisualizationStyle);
         await f.Task("RestoreHistoryAsync", true);
-        Assert.Equal(AudioVisualizationStyle.Fireworks, f.Project.AudioVisualizationStyle);
+        Assert.Equal(AudioVisualizationStyle.RotatingRing, f.Project.AudioVisualizationStyle);
         await f.Task("SetAudioVisualizationAsync", false);
-        Assert.Equal(AudioVisualizationStyle.Fireworks, f.Project.AudioVisualizationStyle);
+        Assert.Equal(AudioVisualizationStyle.RotatingRing, f.Project.AudioVisualizationStyle);
         await f.Task("SetAudioVisualizationAsync", true);
-        Assert.Equal(AudioVisualizationStyle.Fireworks, f.Project.AudioVisualizationStyle);
+        Assert.Equal(AudioVisualizationStyle.RotatingRing, f.Project.AudioVisualizationStyle);
         var repository = new JsonProjectRepository(); await repository.SaveAsync(f.Root, f.Project);
-        Assert.Equal(AudioVisualizationStyle.Fireworks, (await repository.LoadAsync(f.Root)).AudioVisualizationStyle);
+        Assert.Equal(AudioVisualizationStyle.RotatingRing, (await repository.LoadAsync(f.Root)).AudioVisualizationStyle);
         ((TabControl)f.Window.FindName("EditorTabs")).SelectedItem = f.Window.FindName("RecordingTab");
         Assert.Equal(Visibility.Collapsed, ((AudioVisualizationOverlay)f.Window.FindName("AudioVisualizationPreview")).Visibility);
         ((TabControl)f.Window.FindName("EditorTabs")).SelectedItem = f.Window.FindName("PreviewTab");
@@ -339,7 +359,8 @@ public sealed class MediaCreationWorkflowTests
         if (name.StartsWith("visualization-selector", StringComparison.Ordinal))
         {
             var scroll = (ScrollViewer)window.FindName("PreviewSettingsScroll");
-            scroll.ScrollToBottom(); content.UpdateLayout();
+            typeof(MainWindow).GetMethod("ScrollToPreviewSection", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(window, ["VisualizationSection"]); content.UpdateLayout();
             var combo = (ComboBox)window.FindName("AudioVisualizationStyleCombo");
             var point = combo.TranslatePoint(new Point(), scroll);
             Assert.InRange(point.Y, 0, scroll.ActualHeight);

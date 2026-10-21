@@ -35,13 +35,16 @@ public sealed class SubtitleSceneBuilder
                 && item.Line.Timing.Duration.Microseconds > 0)
             .OrderBy(item => item.Line.Timing.Start).ThenBy(item => item.Index).ToArray();
         List<SubtitleLineScene> visible = [];
-        int active = Array.FindLastIndex(timed, item => item.Line.Timing.Start <= time && time < item.Line.Timing.End);
-        if (active >= 0)
+        var active = Enumerable.Range(0, timed.Length)
+            .Where(index => timed[index].Line.Timing.Start <= time && time < timed[index].Line.Timing.End)
+            .Take(2).ToArray();
+        if (active.Length > 0)
         {
-            Add(timed[active].Line, active, isActive: true);
-            if (active + 1 < timed.Length)
+            foreach (int index in active) Add(timed[index].Line, index, isActive: true);
+            int next = active[^1] + 1;
+            if (active.Length == 1 && next < timed.Length && timed[next].Line.Timing.Start > time)
             {
-                Add(timed[active + 1].Line, active + 1, isActive: false);
+                Add(timed[next].Line, next, isActive: false);
             }
         }
         else

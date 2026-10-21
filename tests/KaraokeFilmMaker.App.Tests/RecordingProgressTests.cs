@@ -172,11 +172,12 @@ public sealed class RecordingProgressTests
         Call(window, "RecordFromBrowsedLine_Click", window, new RoutedEventArgs());
         Assert.Equal(project.Lyrics.Lines[0].Id, Current(window).LineId);
         Assert.Equal(0, Current(window).ActiveUnitIndex);
-        Tap(window, 10); Tap(window, 11);
-        Playback(window).Position = At(12);
+        // A partial re-record must stay before the preserved next row's entry (4 s).
+        Tap(window, 1.5); Tap(window, 2.5);
+        Playback(window).Position = At(3.5);
         Call(window, "ApplyUnitMarkersButton_Click", window, new RoutedEventArgs());
         var result = Session(window).Project;
-        Assert.Equal(new[] { At(10), At(11) }, result.Lyrics.Lines[0].Units.Select(unit => unit.Timing.Start));
+        Assert.Equal(new[] { At(1.5), At(2.5) }, result.Lyrics.Lines[0].Units.Select(unit => unit.Timing.Start));
         for (int index = 0; index < 2; index++)
         { AssertSavedUnitUnchanged(project.Lyrics.Lines[1].Units[index], result.Lyrics.Lines[1].Units[index]); }
 

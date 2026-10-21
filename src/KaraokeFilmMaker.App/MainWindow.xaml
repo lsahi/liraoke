@@ -80,7 +80,7 @@
                 <ColumnDefinition Width="6" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="245" />
+                <ColumnDefinition Width="350" MinWidth="310" />
             </Grid.ColumnDefinitions>
             <Border Background="#FFFFFF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
                 <DockPanel>
@@ -108,7 +108,7 @@
             </Border>
             <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#FAFCFD" />
             <Grid Grid.Column="2">
-              <ContentControl x:Name="PreviewMonitorHost">
+              <ContentControl x:Name="PreviewMonitorHost" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" SizeChanged="PreviewMonitorHost_SizeChanged">
             <Border x:Name="SharedMonitor" Padding="0" CornerRadius="4" Background="Black" MouseLeftButtonDown="Monitor_MouseLeftButtonDown">
                 <Grid>
                   <Viewbox Stretch="Uniform">
@@ -134,11 +134,100 @@
               </ContentControl>
             </Grid>
             <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="#FAFCFD" />
-            <Border x:Name="PreviewSettingsPanel" Grid.Column="4" Background="White" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="12">
-              <TabControl x:Name="PreviewInspectorTabs" Background="White" BorderThickness="0">
-               <TabItem Header="节拍器">
-                <ScrollViewer x:Name="PreviewSettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                  <StackPanel>
+            <Border x:Name="PreviewSettingsPanel" Grid.Column="4" Background="White" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="8" Padding="6">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="82" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <TabControl x:Name="PreviewInspectorTabs" TabStripPlacement="Left" Background="Transparent" BorderThickness="0"
+                            SelectionChanged="PreviewInspectorTabs_SelectionChanged" MouseLeftButtonUp="PreviewInspectorTabs_MouseLeftButtonUp">
+                  <TabControl.Template><ControlTemplate TargetType="TabControl">
+                    <StackPanel IsItemsHost="True" />
+                  </ControlTemplate></TabControl.Template>
+                  <TabControl.Resources><Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                    <Setter Property="Padding" Value="5,10" /><Setter Property="FontSize" Value="12" />
+                  </Style></TabControl.Resources>
+                  <TabItem Header="生成伴奏" Tag="AccompanimentSection" />
+                  <TabItem Header="曲名显示" Tag="SongTitleSection" />
+                  <TabItem Header="可视化" Tag="VisualizationSection" />
+                  <TabItem Header="角色控制" Tag="RolesSection" />
+                  <TabItem Header="节拍器" Tag="MetronomeSection" Visibility="Collapsed" />
+                </TabControl>
+                <ScrollViewer x:Name="PreviewSettingsScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled" CanContentScroll="False">
+                 <StackPanel x:Name="PreviewSections">
+                  <Border x:Name="AccompanimentSection" Background="#FFFBEF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <TextBlock Text="生成伴奏" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
+                      <Button x:Name="InspectorMakeAccompanimentButton" Content="生成伴奏" Click="VocalSeparation_Click"
+                              IsEnabled="{Binding IsEnabled, ElementName=MakeAccompanimentButton}"
+                              ToolTip="{Binding ToolTip, ElementName=MakeAccompanimentButton}" />
+                <CheckBox x:Name="AccompanimentPreviewCheck" Content="伴奏" Margin="8,20" VerticalAlignment="Top"
+                          IsEnabled="False" Click="AccompanimentPreview_Click" ToolTipService.ShowOnDisabled="True"
+                          AutomationProperties.Name="预览伴奏开关">
+                  <CheckBox.Template><ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                      <Grid Width="46" Height="26" Margin="0,0,12,0">
+                        <Border x:Name="Track" Background="#DAE3E8" CornerRadius="13" />
+                        <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="White" Margin="3" HorizontalAlignment="Left" />
+                      </Grid>
+                      <TextBlock x:Name="SwitchLabel" Text="伴奏 · 关" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsChecked" Value="True">
+                        <Setter TargetName="Track" Property="Background" Value="#80C8E6" />
+                        <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                        <Setter TargetName="SwitchLabel" Property="Text" Value="伴奏 · 开" />
+                      </Trigger>
+                      <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate></CheckBox.Template>
+                </CheckBox>
+
+                    </StackPanel>
+                  </Border>
+                  <Border x:Name="SongTitleSection" Background="#F1FAFE" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <TextBlock Text="曲名显示" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
+                      <controls:SongTitleEditor x:Name="SongTitleEditor" />
+                    </StackPanel>
+                  </Border>
+                  <Border x:Name="VisualizationSection" Background="#FFFBEF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <TextBlock Text="可视化" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <CheckBox x:Name="AudioVisualizationCheck" Content="音频可视化" Margin="0,14,0,0" Click="AudioVisualization_Click" ToolTip="预览与导出一致，不影响打轴页。首次开启时准备本地缓存，各样式共用。" />
+                    <ComboBox x:Name="AudioVisualizationStyleCombo" Margin="0,6,0,0" SelectionChanged="AudioVisualizationStyle_Changed"
+                              AutomationProperties.Name="音频可视化样式" ToolTip="A / B 蓝黄配色；C / D 白色半透明柱形。选择随工作区保存。">
+                        <ComboBoxItem Content="A · 经典左下频谱" Tag="Classic" />
+                        <ComboBoxItem Content="B · 底部密集频谱" Tag="BottomDense" />
+                        <ComboBoxItem Content="C · 居中白色频谱" Tag="CenterWhite" />
+                        <ComboBoxItem Content="D · 自旋环形频谱" Tag="RotatingRing" />
+                    </ComboBox>
+                    <TextBlock x:Name="AudioVisualizationStatusText" Text="默认关闭 · 可配合图片背景" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                    </StackPanel>
+                  </Border>
+                  <Border x:Name="RolesSection" Background="#F1FAFE" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <TextBlock Text="角色控制" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <TextBlock Text="当前工程角色（顺序即合唱分色顺序）" TextWrapping="Wrap" Margin="0,5" />
+                    <ListBox x:Name="ProjectRolesList" DisplayMemberPath="Name" Height="110" SelectionChanged="ProjectRole_Changed" />
+                    <TextBox x:Name="RoleNameText" MaxLength="80" Margin="0,8" ToolTip="角色名称" />
+                    <WrapPanel>
+                      <Button Content="添加" Click="AddRole_Click" Margin="0,0,5,5" />
+                      <Button Content="改名" Click="RenameRole_Click" Margin="0,0,5,5" />
+                      <Button Content="移除" Click="RemoveRole_Click" Margin="0,0,0,5" />
+                    </WrapPanel>
+                    <Button Content="编辑角色字幕样式…" Click="EditRoleStyle_Click" Margin="0,5" />
+                    <Button Content="保存角色与样式到常用配置" Click="SaveRolePreset_Click" Margin="0,5" />
+                    <TextBlock Text="常用角色（跨工程）" Margin="0,14,0,5" />
+                    <ComboBox x:Name="SavedRolesCombo" DisplayMemberPath="Name" />
+                    <Button Content="加入当前工程" Click="ImportRolePreset_Click" Margin="0,5" />
+                    <TextBlock Text="合唱只显示一份歌词，按角色顺序从上到下分色；第一个角色决定字体与字号。在打轴页选择句子或演唱单元后分配角色。保存常用配置不会更改其他工程。" TextWrapping="Wrap" Foreground="#687782" Margin="0,8" />
+
+                    </StackPanel>
+                  </Border>
+                  <Border x:Name="MetronomeSection" Visibility="Collapsed" Background="#FFFBEF" BorderBrush="#DDEBF1" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <TextBlock Text="节拍器" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
                     <DockPanel Margin="0,0,0,8">
                         <CheckBox x:Name="MetronomeEnabledCheck" DockPanel.Dock="Right" Content="开启" Click="MetronomeEnabled_Click" VerticalAlignment="Center" ToolTip="仅辅助后续新打点吸附；随时开关或调整参数，已有打点和重做记录不变。" />
                         <TextBlock Text="节拍器" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -186,17 +275,11 @@
                     <TextBlock x:Name="MetronomeDraftText" Text="参数已同步" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
                     <TextBlock x:Name="MetronomeStatusText" Text="未开启 · 自由打轴" Foreground="#92701F" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0" />
                     <TextBlock x:Name="MetronomeAnalysisText" Text="离线估算固定节奏，结果请试听确认。" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
-                    <CheckBox x:Name="AudioVisualizationCheck" Content="音频可视化" Margin="0,14,0,0" Click="AudioVisualization_Click" ToolTip="预览与导出一致，不影响打轴页。首次开启时准备本地缓存，各样式共用。" />
-                    <ComboBox x:Name="AudioVisualizationStyleCombo" Margin="0,6,0,0" SelectionChanged="AudioVisualizationStyle_Changed"
-                              AutomationProperties.Name="音频可视化样式" ToolTip="A / B 蓝黄配色；C / D / E 白色半透明柱形。选择随工作区保存。">
-                        <ComboBoxItem Content="A · 经典左下频谱" Tag="Classic" />
-                        <ComboBoxItem Content="B · 底部密集频谱" Tag="BottomDense" />
-                        <ComboBoxItem Content="C · 居中白色频谱" Tag="CenterWhite" />
-                        <ComboBoxItem Content="D · 自旋环形频谱" Tag="RotatingRing" />
-                        <ComboBoxItem Content="E · 中低频烟花" Tag="Fireworks" />
-                    </ComboBox>
-                    <TextBlock x:Name="AudioVisualizationStatusText" Text="默认关闭 · 可配合图片背景" Foreground="#687782" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    <Expander Header="视频 / 图片片段" Margin="0,14,0,0" IsExpanded="False">
+
+                    </StackPanel>
+                  </Border>
+                  <Border Background="#F8FAFC" CornerRadius="7" Padding="10">
+                    <StackPanel>                    <Expander Header="视频 / 图片片段" Margin="0,14,0,0" IsExpanded="False">
                       <StackPanel Margin="0,8,0,0">
                     <StackPanel DataContext="{Binding SelectedItem, ElementName=VideoGrid}">
                         <TextBlock Text="{Binding Name, TargetNullValue=在时间轴上选择片段}" Foreground="#687782" TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -209,56 +292,11 @@
                     <WrapPanel><Button Click="DuplicateVideoButton_Click" Content="复制" Margin="0,0,6,0" /><Button Click="DeleteVideoButton_Click" Content="删除" /></WrapPanel>
                       </StackPanel>
                     </Expander>
-                  </StackPanel>
+</StackPanel>
+                  </Border>
+                 </StackPanel>
                 </ScrollViewer>
-               </TabItem>
-               <TabItem Header="伴奏">
-                <CheckBox x:Name="AccompanimentPreviewCheck" Content="伴奏" Margin="8,20" VerticalAlignment="Top"
-                          IsEnabled="False" Click="AccompanimentPreview_Click" ToolTipService.ShowOnDisabled="True"
-                          AutomationProperties.Name="预览伴奏开关">
-                  <CheckBox.Template><ControlTemplate TargetType="CheckBox">
-                    <StackPanel Orientation="Horizontal" Background="Transparent">
-                      <Grid Width="46" Height="26" Margin="0,0,12,0">
-                        <Border x:Name="Track" Background="#DAE3E8" CornerRadius="13" />
-                        <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="White" Margin="3" HorizontalAlignment="Left" />
-                      </Grid>
-                      <TextBlock x:Name="SwitchLabel" Text="伴奏 · 关" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <ControlTemplate.Triggers>
-                      <Trigger Property="IsChecked" Value="True">
-                        <Setter TargetName="Track" Property="Background" Value="#80C8E6" />
-                        <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
-                        <Setter TargetName="SwitchLabel" Property="Text" Value="伴奏 · 开" />
-                      </Trigger>
-                      <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
-                    </ControlTemplate.Triggers>
-                  </ControlTemplate></CheckBox.Template>
-                </CheckBox>
-               </TabItem>
-               <TabItem Header="曲名显示">
-                 <controls:SongTitleEditor x:Name="SongTitleEditor" />
-               </TabItem>
-               <TabItem Header="角色控制">
-                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                  <StackPanel Margin="6">
-                    <TextBlock Text="当前工程角色（顺序即合唱分色顺序）" TextWrapping="Wrap" Margin="0,5" />
-                    <ListBox x:Name="ProjectRolesList" DisplayMemberPath="Name" Height="110" SelectionChanged="ProjectRole_Changed" />
-                    <TextBox x:Name="RoleNameText" MaxLength="80" Margin="0,8" ToolTip="角色名称" />
-                    <WrapPanel>
-                      <Button Content="添加" Click="AddRole_Click" Margin="0,0,5,5" />
-                      <Button Content="改名" Click="RenameRole_Click" Margin="0,0,5,5" />
-                      <Button Content="移除" Click="RemoveRole_Click" Margin="0,0,0,5" />
-                    </WrapPanel>
-                    <Button Content="编辑角色字幕样式…" Click="EditRoleStyle_Click" Margin="0,5" />
-                    <Button Content="保存角色与样式到常用配置" Click="SaveRolePreset_Click" Margin="0,5" />
-                    <TextBlock Text="常用角色（跨工程）" Margin="0,14,0,5" />
-                    <ComboBox x:Name="SavedRolesCombo" DisplayMemberPath="Name" />
-                    <Button Content="加入当前工程" Click="ImportRolePreset_Click" Margin="0,5" />
-                    <TextBlock Text="合唱只显示一份歌词，按角色顺序从上到下分色；第一个角色决定字体与字号。在打轴页选择句子或演唱单元后分配角色。保存常用配置不会更改其他工程。" TextWrapping="Wrap" Foreground="#687782" Margin="0,8" />
-                  </StackPanel>
-                 </ScrollViewer>
-               </TabItem>
-              </TabControl>
+              </Grid>
             </Border>
            </Grid>
           </TabItem>

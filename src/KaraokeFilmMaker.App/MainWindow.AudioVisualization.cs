@@ -27,7 +27,7 @@ public partial class MainWindow
 
     private async Task SetAudioVisualizationStyleAsync(AudioVisualizationStyle style)
     {
-        if (_workspace is null || _isBusy || !Enum.IsDefined(style) || !CanLeaveSourceLyricEdit() || !CanLeaveQuickEdit())
+        if (_workspace is null || _isBusy || !style.IsAvailable() || !CanLeaveSourceLyricEdit() || !CanLeaveQuickEdit())
         { RefreshAudioVisualizationFields(); return; }
         if (_workspace.Project.AudioVisualizationStyle == style) { return; }
         await RunUiOperationAsync(() =>
@@ -46,7 +46,6 @@ public partial class MainWindow
         AudioVisualizationStyle.BottomDense => "B · 底部密集频谱",
         AudioVisualizationStyle.CenterWhite => "C · 居中白色频谱",
         AudioVisualizationStyle.RotatingRing => "D · 自旋环形频谱",
-        AudioVisualizationStyle.Fireworks => "E · 中低频烟花",
         _ => "A · 经典左下频谱",
     };
 
@@ -56,7 +55,9 @@ public partial class MainWindow
         { RefreshAudioVisualizationFields(); return; }
         await RunUiOperationAsync(async () =>
         {
-            var candidate = _workspace.Project with { AudioVisualizationEnabled = enabled };
+            var candidate = _workspace.Project with { AudioVisualizationEnabled = enabled,
+                AudioVisualizationStyle = enabled && !_workspace.Project.AudioVisualizationStyle.IsAvailable()
+                    ? AudioVisualizationStyle.Classic : _workspace.Project.AudioVisualizationStyle };
             if (enabled) { await PrepareAudioVisualizationAsync(candidate, explicitRequest: true); }
             _workspace = _workspace with { Project = candidate with { ModifiedAtUtc = DateTimeOffset.UtcNow } };
             if (!enabled) { ClearAudioVisualization(); }
@@ -68,7 +69,8 @@ public partial class MainWindow
 
     private async Task PrepareAudioVisualizationAsync(KaraokeProject project, bool explicitRequest = false)
     {
-        if (_workspace is null || !project.AudioVisualizationEnabled) { ClearAudioVisualization(); return; }
+        if (_workspace is null || !project.AudioVisualizationEnabled || !project.AudioVisualizationStyle.IsAvailable())
+        { ClearAudioVisualization(); return; }
         var master = project.MediaAssets.FirstOrDefault(asset => asset.Id == project.MasterAudioAssetId);
         if (master is null) { ClearAudioVisualization(); return; }
         string source = GetAssetAbsolutePath(master);
@@ -105,7 +107,8 @@ public partial class MainWindow
     private void RefreshAudioVisualizationFields()
     {
         if (AudioVisualizationCheck is null) { return; }
-        bool enabled = _workspace?.Project.AudioVisualizationEnabled == true;
+        bool retired = _workspace is not null && !_workspace.Project.AudioVisualizationStyle.IsAvailable();
+        bool enabled = _workspace?.Project.AudioVisualizationEnabled == true && !retired;
         AudioVisualizationCheck.IsChecked = enabled;
         AudioVisualizationCheck.IsEnabled = _workspace is not null;
         if (AudioVisualizationStyleCombo is not null)
@@ -120,14 +123,14 @@ public partial class MainWindow
             }
             finally { _refreshingAudioVisualizationFields = false; }
         }
-        if (!enabled) { AudioVisualizationStatusText.Text = "默认关闭 · 可配合图片背景"; }
+        if (retired) { AudioVisualizationStatusText.Text = "原烟花效果已停用，不参与预览和导出；请选择 A–D 样式并开启。"; }
+        else if (!enabled) { AudioVisualizationStatusText.Text = "默认关闭 · 可配合图片背景"; }
         else if (_workspace?.Project.MasterAudioAssetId is null) { AudioVisualizationStatusText.Text = "已开启 · 导入歌曲后生成频谱"; }
         else if (_audioVisualizationData is not null)
         {
             AudioVisualizationStatusText.Text = _workspace?.Project.AudioVisualizationStyle switch
             {
                 AudioVisualizationStyle.RotatingRing => "白色半透明 · 每 100 秒顺时针一圈 · 原歌曲时间",
-                AudioVisualizationStyle.Fireworks => "白色半透明短柱 · 约 40–818 Hz 驱动 · 跳转 / 导出一致",
                 AudioVisualizationStyle.CenterWhite => "白色半透明 · 中心线向上下展开 · 预览 / 导出同步",
                 _ => "浅蓝 / 浅黄 · 原歌曲时间 · 预览 / 导出同步",
             };
@@ -138,7 +141,8 @@ public partial class MainWindow
     private void RefreshAudioVisualizationPreview(ProjectTime position)
     {
         if (AudioVisualizationPreview is null) { return; }
-        bool show = IsPreviewMode && _workspace?.Project.AudioVisualizationEnabled == true;
+        bool show = IsPreviewMode && _workspace?.Project.AudioVisualizationEnabled == true
+            && _workspace.Project.AudioVisualizationStyle.IsAvailable();
         AudioVisualizationPreview.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         AudioVisualizationPreview.Update(show ? _audioVisualizationData : null, position,
             _workspace?.Project.AudioVisualizationStyle ?? AudioVisualizationStyle.Classic);

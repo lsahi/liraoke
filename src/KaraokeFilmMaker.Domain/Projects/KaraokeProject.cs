@@ -46,7 +46,7 @@ public sealed record KaraokeProject(
     int VideoTrackCount = 1,
     MetronomeSettings? Metronome = null)
 {
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 11;
     public const int MaximumVideoTracks = 1;
 
     public bool AudioVisualizationEnabled { get; init; }

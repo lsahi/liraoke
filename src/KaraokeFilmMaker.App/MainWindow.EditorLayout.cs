@@ -29,6 +29,7 @@ public partial class MainWindow
         // Keep one video backend and one subtitle renderer when switching workspaces.
         ClearVideoPreview();
         (IsRecordingMode ? RecordingMonitorHost : PreviewMonitorHost).Content = SharedMonitor;
+        RefreshPreviewMonitorSize();
         SubtitlePreview.Visibility = IsPreviewMode ? Visibility.Visible : Visibility.Collapsed;
         RefreshAudioVisualizationPreview(_playback.Position);
         RefreshLyricPreview(_playback.Position);

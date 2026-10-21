@@ -56,6 +56,7 @@ public sealed class JapaneseAnnotationService(IJapaneseReadingService readingSer
         return line with
         {
             AnnotationType = AnnotationType.Kana,
+            ExplicitEndTime = null,
             AnnotationText = readingText,
             ReadingText = readingText,
             RomanizationText = romanizationText,
@@ -76,6 +77,7 @@ public sealed class JapaneseAnnotationService(IJapaneseReadingService readingSer
         return line with
         {
             ReadingText = reading, AnnotationText = reading,
+            ExplicitEndTime = null,
             RomanizationText = string.Join(" ", units.Select(unit => unit.Romanization)),
             Units = RoleAssignments.Transfer(line, units), ReadingSource = ReadingSource.Manual,
         };

@@ -25,7 +25,7 @@ public sealed class SongTitleEditor : UserControl
     public SongTitleEditor()
     {
         var panel = new StackPanel { Margin = new Thickness(6) };
-        Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Content = panel; // The inspector owns the single continuous scroll surface.
         panel.Children.Add(_enabled);
         Add("曲名", _text);
         var reset = new Button { Content = "使用歌曲文件名", Margin = new Thickness(0, 4, 0, 4) };

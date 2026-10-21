@@ -217,6 +217,7 @@ public partial class MainWindow
             if (editor.ShowDialog() == true && editor.EditedLine is { } edited)
             {
                 lines[index] = _languageAnalysis.RefreshPresentation(edited);
+                LyricTimingConflicts.Validate(_workspace.Project.Lyrics with { Lines = lines });
                 _workspace = _workspace with
                 {
                     Project = _workspace.Project with
@@ -253,7 +254,8 @@ public partial class MainWindow
             { throw new InvalidOperationException("录制期间歌词或演唱单元已变化。请清空本次时间点后重新录制，避免将时间套到错误的字上。"); }
             int count = Math.Min(_markers.Count, _unitTapTargets.Count);
             LyricDocument lyrics = _lyricTimingService.ApplyContinuousUnitMarkers(_workspace.Project.Lyrics, _markers,
-                ProjectTime.Zero + _playback.Duration, firstLine, end, _rawMarkers, onlyUnconfirmed: !_rerecordFromSelection);
+                ProjectTime.Zero + _playback.Duration, firstLine, end, _rawMarkers,
+                onlyUnconfirmed: !_rerecordFromSelection, explicitLineEnd: true);
             _workspace = _workspace with
             {
                 Project = _workspace.Project with

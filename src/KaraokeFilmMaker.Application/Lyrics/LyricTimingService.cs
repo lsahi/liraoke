@@ -11,6 +11,7 @@ public sealed class LyricTimingService
         Lines = document.Lines.Select(line => line with
         {
             Timing = new TimeRange(ProjectTime.Zero, ProjectTime.Zero),
+            ExplicitEndTime = null,
             Units = line.Units.Select(unit => unit with
             {
                 Timing = new TimeRange(ProjectTime.Zero, ProjectTime.Zero),
@@ -23,7 +24,7 @@ public sealed class LyricTimingService
     /// <summary>Records a continuous stream of singing units without a preceding line-timing pass.</summary>
     public LyricDocument ApplyContinuousUnitMarkers(LyricDocument document, IReadOnlyList<ProjectTime> markers,
         ProjectTime songEnd, int firstLineIndex, ProjectTime recordingEnd, IReadOnlyList<ProjectTime>? rawMarkers = null,
-        bool onlyUnconfirmed = false)
+        bool onlyUnconfirmed = false, bool explicitLineEnd = false)
     {
         IReadOnlyList<UnitTapTarget> plan = UnitTapPlan.Build(document, firstLineIndex, onlyUnconfirmed);
         if (plan.Count == 0 || markers.Count == 0 || markers.Count > plan.Count + 1)
@@ -42,24 +43,40 @@ public sealed class LyricTimingService
         }
         if (unitCount < plan.Count && plan[unitCount - 1].LineId == plan[unitCount].LineId)
         { throw new ArgumentException("当前句还有字未记录。请打完当前句，或按退格撤销；不会用均分时间代替真实打点。"); }
+        LyricDocument result;
         if (onlyUnconfirmed)
-        { return ApplyRemainingUnitMarkers(document, plan, markers, rawMarkers, unitCount, end); }
-        LyricLine[] lines = document.Lines.ToArray();
-        int cursor = 0;
-        foreach (var group in plan.Take(unitCount).GroupBy(target => target.LineIndex))
+        { result = ApplyRemainingUnitMarkers(document, plan, markers, rawMarkers, unitCount, end, explicitLineEnd); }
+        else
         {
-            int count = group.Count();
-            ProjectTime lineEnd = cursor + count < unitCount ? markers[cursor + count] : end;
-            LyricLine line = Retiming(lines[group.Key], new TimeRange(markers[cursor], lineEnd));
-            lines[group.Key] = ApplyUnitMarkers(line, markers.Skip(cursor).Take(count).ToArray(),
-                rawMarkers?.Skip(cursor).Take(count).ToArray());
-            cursor += count;
+            LyricLine[] lines = document.Lines.ToArray();
+            int cursor = 0;
+            foreach (var group in plan.Take(unitCount).GroupBy(target => target.LineIndex))
+            {
+                int count = group.Count();
+                ProjectTime lineEnd = cursor + count < unitCount ? markers[cursor + count] : end;
+                LyricLine line = Retiming(lines[group.Key], new TimeRange(markers[cursor], lineEnd));
+                lines[group.Key] = ApplyUnitMarkers(line, markers.Skip(cursor).Take(count).ToArray(),
+                    rawMarkers?.Skip(cursor).Take(count).ToArray());
+                cursor += count;
+            }
+            result = document with { Lines = lines };
         }
-        return document with { Lines = lines };
+        int lastLine = plan[unitCount - 1].LineIndex;
+        var changedLines = plan.Take(unitCount).Select(target => target.LineIndex).ToHashSet();
+        result = result with
+        {
+            Lines = result.Lines.Select((line, index) => index == lastLine
+                ? line with { ExplicitEndTime = explicitLineEnd && line.Timing.End == end ? end : null }
+                : changedLines.Contains(index)
+                    ? line with { ExplicitEndTime = null } : line).ToArray(),
+        };
+        LyricTimingConflicts.Validate(result);
+        return result;
     }
 
     private static LyricDocument ApplyRemainingUnitMarkers(LyricDocument document, IReadOnlyList<UnitTapTarget> plan,
-        IReadOnlyList<ProjectTime> markers, IReadOnlyList<ProjectTime>? rawMarkers, int unitCount, ProjectTime end)
+        IReadOnlyList<ProjectTime> markers, IReadOnlyList<ProjectTime>? rawMarkers, int unitCount, ProjectTime end,
+        bool explicitLineEnd)
     {
         // Completed units are immutable anchors, not pending markers. This also prevents a new
         // sentence's last unit from stretching across a completed sentence skipped by the plan.
@@ -86,16 +103,27 @@ public sealed class LyricTimingService
                         || anchor.LineIndex == target.LineIndex && anchor.UnitIndex < target.UnitIndex;
                     if (comesBefore)
                     {
-                        if (anchor.Unit.Timing.End > start)
+                        bool adjacentExplicit = anchor.LineIndex == target.LineIndex - 1
+                            && LyricTimingConflicts.HasExplicitEnd(document.Lines[anchor.LineIndex]);
+                        if (anchor.Unit.Timing.End > start && !adjacentExplicit)
                         { throw new ArgumentException("新的打点与之前已确认的单元重叠；已保存时间不会被覆盖，请调整打点或明确选择重录。"); }
                     }
                     else
                     {
-                        if (anchor.Unit.Timing.Start <= start)
+                        // Cross-row constraints are checked on the completed result below. Within a
+                        // row, saved units remain immutable anchors even during partial continuation.
+                        if (anchor.LineIndex == target.LineIndex && anchor.Unit.Timing.Start <= start)
                         { throw new ArgumentException("新的打点越过了后续已确认单元；已保存时间不会被覆盖，请调整打点或明确选择重录。"); }
-                        if (anchor.Unit.Timing.Start < unitEnd) { unitEnd = anchor.Unit.Timing.Start; }
+                        // Never silently shorten an explicit Enter end against a later row.
+                        // Keep it intact and let row-level validation reject illegal overlaps.
+                        bool keepExplicitEnd = explicitLineEnd && target.LineIndex == plan[unitCount - 1].LineIndex
+                            && anchor.LineIndex > target.LineIndex;
+                        if (!keepExplicitEnd && anchor.Unit.Timing.Start < unitEnd)
+                        { unitEnd = anchor.Unit.Timing.Start; }
                     }
                 }
+                if (unitEnd <= start)
+                { throw new ArgumentException("新的单元没有有效时长；请调整入口，不能越过后续已保存的打点。"); }
                 units[target.UnitIndex] = units[target.UnitIndex] with
                 {
                     Timing = new TimeRange(start, unitEnd),
@@ -205,7 +233,7 @@ public sealed class LyricTimingService
                 IsConfirmed = false,
             };
         }).ToArray();
-        return line with { Timing = timing, Units = units, ReviewState = ReviewState.Unreviewed };
+        return line with { Timing = timing, Units = units, ReviewState = ReviewState.Unreviewed, ExplicitEndTime = null };
     }
 
     private static long Scale(long offset, long oldDuration, long newDuration) =>

@@ -15,7 +15,7 @@ namespace KaraokeFilmMaker.Infrastructure.Tests;
 
 public sealed class VisualizationVarietyTests
 {
-    public static IEnumerable<object[]> StylesAndFormats => Enum.GetValues<AudioVisualizationStyle>()
+    public static IEnumerable<object[]> StylesAndFormats => Enum.GetValues<AudioVisualizationStyle>().Where(style => style.IsAvailable())
         .SelectMany(style => new[] { (640, 360), (480, 360), (360, 360), (360, 640) }
             .Select(size => new object[] { style, size.Item1, size.Item2 }));
 
@@ -111,7 +111,7 @@ public sealed class VisualizationVarietyTests
             (byte)(35 + 190 * Math.Exp(-(i % 32) / 35.0) * (0.3 + 0.7 * Math.Abs(Math.Sin(i % 32 * 0.43 + 0.4))))).ToArray();
         var data = new AudioVisualizationData(3, frames);
         var pictures = new List<byte[]>();
-        foreach (var style in Enum.GetValues<AudioVisualizationStyle>())
+        foreach (var style in Enum.GetValues<AudioVisualizationStyle>().Where(style => style.IsAvailable()))
         {
             var project = KaraokeProject.Create("样式预览", DateTimeOffset.UtcNow) with { AudioVisualizationEnabled = true, AudioVisualizationStyle = style };
             await using var renderer = new WpfSubtitleFrameRenderer(project, data);
@@ -120,6 +120,18 @@ public sealed class VisualizationVarietyTests
             Assert.All(pictures, previous => Assert.False(previous.SequenceEqual(pixels)));
             pictures.Add(pixels); Save(frame, $"style-demo-{style}.png");
         }
+    }
+
+    [Fact]
+    public async Task RetiredFireworksRenderNothingInBothPreviewAndExport()
+    {
+        var data = new AudioVisualizationData(3, Enumerable.Repeat((byte)255, 32 * 90).ToArray());
+        var project = KaraokeProject.Create("旧烟花", DateTimeOffset.UnixEpoch) with
+        { AudioVisualizationEnabled = true, AudioVisualizationStyle = AudioVisualizationStyle.Fireworks };
+        await using var renderer = new WpfSubtitleFrameRenderer(project, data);
+        var pixels = (await renderer.RenderAsync(ProjectTime.FromSeconds(.3), 640, 360)).BgraPixels.ToArray();
+        Assert.All(pixels, value => Assert.Equal(0, value));
+        Assert.Equal(pixels, await Preview(data, ProjectTime.FromSeconds(.3), AudioVisualizationStyle.Fireworks, 640, 360));
     }
 
     [Fact]

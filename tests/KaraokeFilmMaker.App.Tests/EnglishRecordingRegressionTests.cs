@@ -19,6 +19,36 @@ namespace KaraokeFilmMaker.App.Tests;
 public sealed class EnglishRecordingRegressionTests
 {
     [Fact]
+    public Task EnterEndsSurviveReopenAndAllowAdjacentOverlapButNotThirdRow() => RunSta(context =>
+    {
+        var project = KaraokeProject.Create("Overlap", DateTimeOffset.UnixEpoch) with
+        { Lyrics = new LyricImportService().Parse("Come home\nWith me\nSing now", ".txt", LyricLanguage.English) };
+        var window = context.Open(project);
+        Press(window, Key.Space, 1); Press(window, Key.Space, 2); Press(window, Key.Enter, 8);
+        var first = Session(window).Project;
+        Assert.Equal(At(8), first.Lyrics.Lines[0].ExplicitEndTime);
+        var repository = new JsonProjectRepository();
+        repository.SaveAsync(context.Root, first).GetAwaiter().GetResult();
+        context.Close(window);
+        window = context.Open(repository.LoadAsync(context.Root).GetAwaiter().GetResult());
+        Playback(window).PauseAsync().GetAwaiter().GetResult();
+        Playback(window).SeekAsync(At(5)).GetAwaiter().GetResult();
+        Playback(window).PlayAsync().GetAwaiter().GetResult();
+        Press(window, Key.Space, 6); Press(window, Key.Space, 7); Press(window, Key.Enter, 10);
+        var second = Session(window).Project;
+        Assert.Empty(Markers(window));
+        Assert.Equal(At(6), second.Lyrics.Lines[1].Timing.Start);
+        Assert.Equal(first.Lyrics.Lines[0].Timing, second.Lyrics.Lines[0].Timing);
+        Press(window, Key.Space, 7.5);
+        Assert.Empty(Markers(window));
+        Assert.Contains("只允许相邻两句重叠", ((TextBlock)window.FindName("StatusText")).Text);
+        Press(window, Key.Space, 8); Press(window, Key.Space, 9); Press(window, Key.Enter, 11);
+        Assert.Empty(Markers(window));
+        Assert.All(Session(window).Project.Lyrics.Lines.SelectMany(l => l.Units), u => Assert.True(u.IsConfirmed));
+        Assert.Equal(At(8), Session(window).Project.Lyrics.Lines[2].Timing.Start);
+    });
+
+    [Fact]
     public Task PersistedEnglishContextWarningDoesNotBlockWordShortcutsOrRebuildSavedAnalysis() => RunSta(context =>
     {
         var original = EnglishProject();

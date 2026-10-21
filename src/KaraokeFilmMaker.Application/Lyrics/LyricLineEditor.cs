@@ -21,6 +21,7 @@ public static class LyricLineEditor
         LyricLine Part(string text, IReadOnlyList<LyricUnit> units, TimeRange timing, bool left) => line with
         {
             Id = left ? line.Id : Guid.NewGuid(), PrimaryText = text, Units = units, Timing = timing,
+            ExplicitEndTime = left ? null : line.ExplicitEndTime,
             ReadingText = line.ReadingText is null ? null : string.Concat(units.Select(unit => unit.Reading)),
             AnnotationText = line.ReadingText is null ? null : string.Concat(units.Select(unit => unit.Reading)),
             RomanizationText = line.RomanizationText is null ? null : string.Join(" ", units.Select(unit => unit.Romanization)),
@@ -50,6 +51,7 @@ public static class LyricLineEditor
             RomanizationText = Join(first.RomanizationText, second.RomanizationText),
             TranslationText = Join(first.TranslationText, second.TranslationText),
             Timing = new TimeRange(first.Timing.Start, second.Timing.End),
+            ExplicitEndTime = second.ExplicitEndTime,
             Units = [.. first.Units, .. second.Units.Select(unit => unit with
             {
                 DisplayRanges = unit.DisplayRanges.Select(range => new TextRange(range.Start + shift, range.Length)).ToArray(),
@@ -72,6 +74,7 @@ public static class LyricLineEditor
         LyricLine Part(string text, TimeRange timing, bool keepId) => line with
         {
             Id = keepId ? line.Id : Guid.NewGuid(), PrimaryText = text, Timing = timing,
+            ExplicitEndTime = null,
             Units = RoleAssignments.Transfer(line, LyricImportService.CreateUnits(text, timing, language)
                 .Select(unit => unit with { DisplayRanges = unit.DisplayRanges.Select(range =>
                     new TextRange(range.Start + (keepId ? 0 : offset), range.Length)).ToArray() }).ToArray())
@@ -87,6 +90,7 @@ public static class LyricLineEditor
 
     public static LyricLine Offset(LyricLine line, long microseconds) => line with
     {
+        ExplicitEndTime = line.ExplicitEndTime is { } end ? new ProjectTime(checked(end.Microseconds + microseconds)) : null,
         Timing = new TimeRange(new ProjectTime(checked(line.Timing.Start.Microseconds + microseconds)),
             new ProjectTime(checked(line.Timing.End.Microseconds + microseconds))),
         Units = line.Units.Select(unit => unit with

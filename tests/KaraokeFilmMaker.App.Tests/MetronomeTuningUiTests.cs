@@ -101,6 +101,7 @@ public sealed class MetronomeTuningUiTests
         foreach (var size in new[] { new Size(1440, 940), new Size(1100, 760) })
         {
             content.Measure(size); content.Arrange(new Rect(new Point(), size)); content.UpdateLayout();
+            fixture.Call("ScrollToPreviewSection", "MetronomeSection"); content.UpdateLayout();
             var monitor = fixture.Find<ContentControl>("PreviewMonitorHost");
             var panel = fixture.Find<Border>("PreviewSettingsPanel");
             var wheel = fixture.Find<MetronomeValueWheel>("MetronomeBpmWheel");
@@ -124,6 +125,8 @@ public sealed class MetronomeTuningUiTests
         public int Offset => int.Parse(Find<TextBox>("MetronomeOffsetText").Text, CultureInfo.CurrentCulture);
         public Fixture()
         {
+            // Exercise the retained experimental editor, not the public release UI.
+            Find<Border>("MetronomeSection").Visibility = Visibility.Visible;
             Field("_workspace").SetValue(Window, new WorkspaceSession(Path.GetTempPath(), KaraokeProject.Create("节拍器可视化", DateTimeOffset.UtcNow)));
             Call("RefreshWorkspaceDisplay"); Call("RefreshMetronomeFields");
         }

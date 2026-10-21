@@ -296,7 +296,9 @@ public partial class MainWindow
                 var split = LyricLineEditor.SplitBeforeUnit(lines[index], unitIndex);
                 lines[index] = split.Left; lines.Insert(index + 1, split.Right);
             }
-            _workspace = _workspace with { Project = _workspace.Project with { Lyrics = _workspace.Project.Lyrics with { Lines = lines } } };
+            var lyrics = _workspace.Project.Lyrics with { Lines = lines };
+            LyricTimingConflicts.Validate(lyrics);
+            _workspace = _workspace with { Project = _workspace.Project with { Lyrics = lyrics } };
             _recordingEditTarget = null;
             QuickEditPanel.Visibility = Visibility.Collapsed;
             if (_browsedRecordingLineId is not null) { _browsedRecordingLineId = lines[index].Id; }

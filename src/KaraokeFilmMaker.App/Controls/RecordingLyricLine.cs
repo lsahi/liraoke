@@ -113,6 +113,13 @@ public sealed class RecordingLyricLine : FrameworkElement
             }
             bool secondary = legacyJapanese || secondaryTexts.Count > 0;
             string original = secondaryTexts.Count > 0 ? string.Concat(secondaryTexts.Distinct()) : group.Text;
+            // Japanese mora may map to partially overlapping source spans (帰 / 帰っ).
+            // The source group is already their union; concatenating cell labels duplicates kanji.
+            if (secondaryTexts.Count > 0 && group.UnitIndexes.All(index =>
+                displayCells?.GetValueOrDefault(_line.Units[index].Id)?.SecondaryText ==
+                string.Concat(_line.Units[index].DisplayRanges.Distinct().Select(range =>
+                    _line.PrimaryText.Substring(range.Start, range.Length)))))
+            { original = group.Text; }
             if (presentation is not null && group.UnitIndexes.Any(index => _line.Units[index].DisplayRanges.Count > 1))
             { original = group.Text; } // Keep intervening source punctuation/text in a shared source group.
             double minimum = Text(original, 18).Width + 8;

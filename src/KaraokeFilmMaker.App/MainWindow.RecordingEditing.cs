@@ -60,6 +60,7 @@ public partial class MainWindow
     private void CommitRecordingLines(IReadOnlyList<LyricLine> lines, Guid? browseId)
     {
         var project = _workspace!.Project with { Lyrics = _workspace.Project.Lyrics with { Lines = lines } };
+        KaraokeFilmMaker.Application.Lyrics.LyricTimingConflicts.Validate(project.Lyrics);
         var errors = ProjectValidator.Validate(project);
         if (errors.Count > 0) { throw new InvalidOperationException(string.Join(Environment.NewLine, errors)); }
         _workspace = _workspace with { Project = project };

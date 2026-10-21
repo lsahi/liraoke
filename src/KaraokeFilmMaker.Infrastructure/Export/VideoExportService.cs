@@ -53,7 +53,7 @@ public sealed class VideoExportService(MediaToolchain tools)
         string audio = await new ProjectAudioComposer(tools).PrepareAsync(workspacePath, project,
             cancellationToken: cancellationToken, accompaniment: accompaniment).ConfigureAwait(false);
         AudioVisualizationData? visualization = null;
-        if (project.AudioVisualizationEnabled)
+        if (project.AudioVisualizationEnabled && project.AudioVisualizationStyle.IsAvailable())
         {
             progress?.Report(new ExportProgress(0.04, "准备原歌曲频谱缓存"));
             visualization = await new AudioVisualizationCache(tools).GetAsync(

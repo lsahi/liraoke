@@ -193,6 +193,7 @@ public partial class MainWindow
         PreviewCanvas.Width = preset?.Width ?? 1920;
         PreviewCanvas.Height = preset?.Height ?? 1080;
         ExportDimensionsText.Text = $"{PreviewCanvas.Width:0} × {PreviewCanvas.Height:0}";
+        RefreshPreviewMonitorSize();
     }
 
     private void RefreshExportFormatAvailability()

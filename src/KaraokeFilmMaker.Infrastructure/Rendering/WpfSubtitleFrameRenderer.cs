@@ -67,7 +67,7 @@ public sealed class WpfSubtitleFrameRenderer : ISubtitleFrameRenderer, IAsyncDis
         DrawingVisual visual = _visual ??= new DrawingVisual();
         using (DrawingContext context = visual.RenderOpen())
         {
-            if (_project.AudioVisualizationEnabled)
+            if (_project.AudioVisualizationEnabled && _project.AudioVisualizationStyle.IsAvailable())
             {
                 _audioVisualizationPainter.Draw(context, _audioVisualization, time, width, height, _project.AudioVisualizationStyle);
             }

@@ -17,7 +17,7 @@ namespace KaraokeFilmMaker.App.Tests;
 public sealed class LightUiTests
 {
     [Fact]
-    public async Task MainWindowUsesLightChromeWithFourVisibleTabsAndAVisibleMetronome() => await Sta(() =>
+    public async Task MainWindowUsesLightChromeWithFourVisibleTabsAndHiddenMetronome() => await Sta(() =>
     {
         var window = new MainWindow();
         try
@@ -43,12 +43,11 @@ public sealed class LightUiTests
             {
                 tabs.SelectedItem = window.FindName("PreviewTab");
                 Layout(content, size);
+                Method("ScrollToPreviewSection").Invoke(window, ["MetronomeSection"]);
+                Layout(content, size);
                 var metronome = (CheckBox)window.FindName("MetronomeEnabledCheck");
-                Point point = metronome.TranslatePoint(new Point(), content);
-                Assert.InRange(point.Y, 0, size.Height);
-                Assert.InRange(point.X, 0, size.Width - metronome.ActualWidth);
-                Assert.Equal(Visibility.Visible, metronome.Visibility);
-                Assert.True(metronome.ActualHeight > 0);
+                Assert.Equal(Visibility.Collapsed, ((Border)window.FindName("MetronomeSection")).Visibility);
+                Assert.Equal(0, metronome.ActualHeight);
                 Snapshot(content, $"light-preview-{size.Width}.png", size);
                 tabs.SelectedItem = window.FindName("RecordingTab");
                 Layout(content, size);

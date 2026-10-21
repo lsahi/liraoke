@@ -48,6 +48,16 @@ public sealed class CreationExportIntegrationTests : IDisposable
         await exporter.ExportAsync(_root, project, plain);
         Assert.False(Directory.Exists(Path.Combine(_root, "cache", "audio-visualization")));
         await exporter.ExportAsync(_root, project with { AudioVisualizationEnabled = true }, animated);
+        if (style == AudioVisualizationStyle.Fireworks)
+        {
+            Assert.False(Directory.Exists(Path.Combine(_root, "cache", "audio-visualization")));
+            Assert.Equal(await FrameAsync(plain, 1), await FrameAsync(animated, 1));
+            var retiredDetails = await new FfprobeMediaReader(_tools).ReadDetailsAsync(animated);
+            Assert.True(retiredDetails.HasAudio);
+            Assert.InRange(retiredDetails.Duration.TotalSeconds, 1.55, 1.7);
+            Assert.Empty(Directory.GetFiles(_root, "*.partial.mp4"));
+            return;
+        }
         Assert.Single(Directory.GetFiles(Path.Combine(_root, "cache", "audio-visualization"), "*.spectrum"));
         var details = await new FfprobeMediaReader(_tools).ReadDetailsAsync(animated);
         Assert.Equal(1280, details.Width); Assert.Equal(720, details.Height); Assert.True(details.HasAudio);

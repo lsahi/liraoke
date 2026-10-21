@@ -47,6 +47,7 @@ public static class LyricLineInsertion
     private static LyricLine ClearTiming(LyricLine line) => line with
     {
         Timing = new TimeRange(ProjectTime.Zero, ProjectTime.Zero),
+        ExplicitEndTime = null,
         Units = line.Units.Select(unit => unit with
         {
             Timing = new TimeRange(ProjectTime.Zero, ProjectTime.Zero),
