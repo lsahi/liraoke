@@ -6,6 +6,12 @@ namespace KaraokeFilmMaker.Application.Preferences;
 
 public sealed record SavedSubtitleStyle(Guid Id, string Name, SubtitleStyle Style);
 
+// Only the encrypted credential payload is persisted; secrets are never project data.
+public sealed record AiProviderPreference(Guid Id, [property: JsonRequired] string ProviderName, [property: JsonRequired] bool IsOfficial,
+    string? ApiPath = null, string? ProtectedCredentials = null);
+
+public sealed record AiCredentials(string? APIKey = null, string? AK = null, string? SK = null);
+
 public sealed record ApiConnectionPreference(string? Endpoint = null, string? Model = null, string? CredentialReference = null)
 {
     // Future provider-specific non-secret settings must survive style edits.
@@ -18,7 +24,8 @@ public sealed record UserPreferences
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public IReadOnlyList<SavedSubtitleStyle> SubtitleStyles { get; init; } = [];
     public IReadOnlyList<SingingRole> Roles { get; init; } = [];
-    // Credentials themselves belong to a future OS-protected store, never plaintext in this file.
+    public IReadOnlyList<AiProviderPreference> AiProviders { get; init; } = [];
+    // Legacy connection metadata is retained. AiProviders holds only OS-protected credential payloads.
     public IReadOnlyDictionary<string, ApiConnectionPreference> ApiConnections { get; init; } = new Dictionary<string, ApiConnectionPreference>();
     [JsonExtensionData] public Dictionary<string, JsonElement>? AdditionalSettings { get; init; }
 }

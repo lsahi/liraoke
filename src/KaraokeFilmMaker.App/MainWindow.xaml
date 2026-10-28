@@ -10,7 +10,7 @@
         PreviewKeyDown="Window_PreviewKeyDown"
         Closing="Window_Closing"
         Closed="Window_Closed">
-    <Grid Background="#FAFCFD">
+    <Grid x:Name="ClientRoot" Background="#FAFCFD" ClipToBounds="True">
     <Grid.Resources>
       <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
@@ -58,6 +58,18 @@
                     <Button x:Name="RecoveryButton" Padding="12,7" Margin="4,2" Click="RecoveryButton_Click" Content="恢复未保存编辑" Visibility="Collapsed" />
                 </WrapPanel>
                 <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="AiOpenButton" Click="AiOpen_Click" Padding="10,5" Margin="4,0"
+                                AutomationProperties.Name="AI 助手" ToolTip="打开 AI 助手">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Width="36" Height="24" Stretch="Uniform" Margin="0,0,7,0" RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Source><BitmapImage UriSource="/Liraoke;component/Assets/AiAssistant.png" DecodePixelWidth="108" CacheOption="OnLoad" /></Image.Source>
+                                </Image>
+                                <TextBlock Text="AI 助手" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="AiConfigurationButton" Content="AI 配置" Click="AiConfiguration_Click" Padding="12,7" Margin="4,0" />
+                    </StackPanel>
                     <Image Width="36" Height="36" DockPanel.Dock="Left" Margin="0,0,10,0"
                            RenderOptions.BitmapScalingMode="HighQuality" ToolTip="莉拉OK! / Liraoke">
                         <Image.Source><BitmapImage UriSource="/Liraoke;component/Assets/Liraoke.source.png" DecodePixelWidth="144" /></Image.Source>
@@ -709,5 +721,22 @@
                                Text="空格播放 / 暂停 · 拖动视频片段移动，拖边缘裁切 · 滚轮缩放，Shift+滚轮平移" />
             </Grid>
         </Border>
+        <Canvas x:Name="AiOverlayLayer" Grid.RowSpan="4" Panel.ZIndex="100" ClipToBounds="True">
+            <controls:AiChatPanel x:Name="AssistantPanel" Visibility="Collapsed" Width="350" Height="400" />
+            <Button x:Name="AiFloatingButton" Width="144" Height="120" Padding="0" Background="Transparent" BorderThickness="0"
+                    AutomationProperties.Name="莉拉，展开或收起 AI 对话框" ToolTip="单击展开 / 收起 AI 对话框；拖动可在客户端内移动" Click="AiPetToggle_Click"
+                    PreviewMouseLeftButtonDown="AiFloating_MouseDown" PreviewMouseMove="AiFloating_MouseMove"
+                    PreviewMouseLeftButtonUp="AiFloating_MouseUp" LostMouseCapture="AiFloating_LostCapture">
+                <Button.Template><ControlTemplate TargetType="Button">
+                    <Border x:Name="PetFocus" BorderBrush="Transparent" BorderThickness="1" CornerRadius="14">
+                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="PetFocus" Property="BorderBrush" Value="#8DC5D7" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate></Button.Template>
+                <controls:AiPetImage x:Name="AiPet" />
+            </Button>
+        </Canvas>
     </Grid>
 </Window>

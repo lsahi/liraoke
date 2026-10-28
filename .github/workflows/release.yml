@@ -7,6 +7,7 @@ on:
       - '!v*-local.*'
       # This stable release is published locally; avoid competing asset uploads.
       - '!v0.5.0.0'
+      - '!v0.5.1.0'
   workflow_dispatch:
     inputs:
       tag:

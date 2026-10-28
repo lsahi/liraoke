@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\KaraokeFilmMaker.Domain\KaraokeFilmMaker.Domain.csproj" />
@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.5.0.0</Version>
+    <Version>0.5.1.0</Version>
     <AssemblyName>Liraoke</AssemblyName>
     <RootNamespace>KaraokeFilmMaker.App</RootNamespace>
     <Title>莉拉OK! / Liraoke</Title>
@@ -27,6 +27,9 @@
   <ItemGroup>
     <Resource Include="Assets\Liraoke.ico" />
     <Resource Include="Assets\Liraoke.source.png" />
+    <Resource Include="Assets\AiAssistant.png" />
+    <Resource Include="Assets\AiPet\*.png" />
+    <Resource Include="Assets\AiPet\animations.json" />
     <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe" Link="tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffprobe.exe" Link="tools\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffprobe.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\tools\ffmpeg\ffmpeg-8.1.2-essentials_build\LICENSE" Link="tools\ffmpeg\LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

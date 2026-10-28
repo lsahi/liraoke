@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     {
         _userPreferenceStore = preferences;
         InitializeComponent();
+        InitializeAiUi();
         _japaneseAnnotationService = new JapaneseAnnotationService(_japaneseReadingService);
         InitializeLanguages();
         var repository = new JsonProjectRepository();
@@ -370,6 +371,9 @@ public partial class MainWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Chat text and buttons must never trigger playback or lyric recording shortcuts.
+        if (AssistantPanel.IsKeyboardFocusWithin || AiFloatingButton.IsKeyboardFocusWithin
+            || AiOpenButton.IsKeyboardFocusWithin || AiConfigurationButton.IsKeyboardFocusWithin) return;
         if (LyricsGrid.IsKeyboardFocusWithin || VideoGrid.IsKeyboardFocusWithin || _isBusy
             || Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
             || Keyboard.FocusedElement is Controls.MetronomeValueWheel

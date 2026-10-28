@@ -1,0 +1,37 @@
+<UserControl x:Class="KaraokeFilmMaker.App.Controls.AiChatPanel"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid Margin="4,4,4,6">
+ <Border Background="White" BorderBrush="#9FC6D8" BorderThickness="1" CornerRadius="14" IsHitTestVisible="False">
+  <Border.Effect><DropShadowEffect Color="#31596C" BlurRadius="20" ShadowDepth="5" Direction="270" Opacity="0.32" /></Border.Effect>
+ </Border>
+ <Border x:Name="ChatBorder" Background="Transparent" BorderThickness="1" CornerRadius="14" Padding="12">
+  <Grid>
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <DockPanel x:Name="ChatHeader" Margin="0,0,0,10">
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+     <Button Content="AI 配置" Click="Configure_Click" Padding="7,5" Margin="0,0,5,0"/>
+     <Button Content="收起" Click="Collapse_Click" Padding="7,5"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <Image Width="30" Height="20" Stretch="Uniform" Margin="0,0,7,0" RenderOptions.BitmapScalingMode="HighQuality">
+      <Image.Source><BitmapImage UriSource="/Liraoke;component/Assets/AiAssistant.png" DecodePixelWidth="90" CacheOption="OnLoad" /></Image.Source>
+     </Image>
+     <TextBlock Text="AI 助手" FontWeight="SemiBold" VerticalAlignment="Center"/>
+    </StackPanel>
+   </DockPanel>
+   <ScrollViewer x:Name="ConversationScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="Messages"><TextBlock Text="AI暂未接入" Foreground="#687782" Margin="0,12"/></StackPanel>
+   </ScrollViewer>
+   <StackPanel x:Name="Composer" Grid.Row="2" Margin="0,10,0,0">
+    <TextBox x:Name="MessageInput" AutomationProperties.Name="给 AI 助手的消息" AcceptsReturn="True" TextWrapping="Wrap"
+      VerticalScrollBarVisibility="Auto" Height="76" MaxLength="16000" KeyDown="MessageInput_KeyDown"/>
+    <DockPanel x:Name="SendRow" Margin="0,8,0,0">
+     <Button DockPanel.Dock="Right" Content="发送" Click="Send_Click" Padding="12,5"/>
+     <TextBlock Text="Enter 发送 · Shift 换行" FontSize="11" Foreground="#687782" VerticalAlignment="Center"/>
+    </DockPanel>
+   </StackPanel>
+  </Grid>
+ </Border>
+ </Grid>
+</UserControl>
