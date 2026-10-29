@@ -23,7 +23,7 @@ public class AccompanimentUiTests
         {
             var make = (Button)window.FindName("MakeAccompanimentButton");
             var toolbar = Assert.IsType<WrapPanel>(make.Parent);
-            Assert.Equal(new[] { "新建工作区", "打开工作区", "制作伴奏", "撤销", "保存", "导出 MP4", "取消任务" },
+            Assert.Equal(new[] { "新建工作区", "打开工作区", "制作伴奏", "撤销", "保存", "导出 MP4", "取消任务", "练歌房" },
                 toolbar.Children.OfType<Button>().Where(b => b.Visibility == Visibility.Visible).Select(b => b.Content.ToString()));
             var toggle = (CheckBox)window.FindName("AccompanimentPreviewCheck"); Assert.False(toggle.IsEnabled);
             var asset = new MediaAsset(Guid.NewGuid(), "测试歌曲", "song.wav", MediaKind.Audio, ProjectDuration.FromSeconds(10));

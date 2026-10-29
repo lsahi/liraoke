@@ -55,6 +55,7 @@
                             Click="ImportVideoButton_Click" Content="导入视频" IsEnabled="False" />
                     <Button x:Name="ExportButton" Padding="12,7" Margin="4,2" Click="ExportButton_Click" Content="导出 MP4" IsEnabled="False" />
                     <Button x:Name="CancelOperationButton" Padding="12,7" Margin="4,2" Click="CancelOperationButton_Click" Content="取消任务" IsEnabled="False" />
+                    <Button x:Name="PracticeRoomButton" Content="练歌房" Click="PracticeRoom_Click" Padding="12,7" Margin="4,2" ToolTip="打开独立练歌房，使用当前项目并支持麦克风监听" />
                     <Button x:Name="RecoveryButton" Padding="12,7" Margin="4,2" Click="RecoveryButton_Click" Content="恢复未保存编辑" Visibility="Collapsed" />
                 </WrapPanel>
                 <DockPanel>

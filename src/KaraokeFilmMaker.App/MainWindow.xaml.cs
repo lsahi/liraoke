@@ -521,6 +521,7 @@ public partial class MainWindow : Window
         }
 
         _isClosing = true;
+        await ClosePracticeRoomAsync();
         _uiTimer.Stop();
         _recoveryTimer.Stop();
         _operationCancellation?.Cancel();
@@ -689,7 +690,7 @@ public partial class MainWindow : Window
 
     private async Task RunUiOperationAsync(Func<Task> operation, bool allowSourceDraft = false)
     {
-        if (_isBusy || (!allowSourceDraft && !CanLeaveSourceLyricEdit()))
+        if (_isBusy || _openingPracticeRoom || (!allowSourceDraft && !CanLeaveSourceLyricEdit()))
         {
             return;
         }
@@ -698,6 +699,7 @@ public partial class MainWindow : Window
         try
         {
             _isBusy = true;
+            await ClosePracticeRoomAsync();
             RefreshAccompanimentState();
             RefreshWorkAreaAvailability();
             RefreshExportFormatAvailability();
