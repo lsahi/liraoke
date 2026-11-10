@@ -1,0 +1,61 @@
+<Window x:Class="KaraokeFilmMaker.App.MusicSearchWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="找歌 · Liraoke" Width="1050" Height="740" MinWidth="800" MinHeight="560" WindowStartupLocation="CenterOwner"
+ Background="#FAFCFD" Foreground="#34424D" FontFamily="Segoe UI" FontSize="13" Closed="Window_Closed">
+ <Window.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Themes/LightTheme.xaml" /></ResourceDictionary.MergedDictionaries></ResourceDictionary></Window.Resources>
+ <Grid Margin="20" Background="#FAFCFD">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel>
+   <TextBlock Text="找一首歌，开始制作" FontSize="23" FontWeight="SemiBold" Margin="0,0,0,6"/>
+   <TextBlock Text="按歌名或歌手搜索；请核对演唱者、专辑和录音版本。导入音频不会替换歌词或已有打轴。" TextWrapping="Wrap" Foreground="#61768B" Margin="0,0,0,14"/>
+   <Grid x:Name="SearchControls">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+    <ComboBox x:Name="SourceFilter" DisplayMemberPath="Name" SelectedValuePath="Id" Margin="0,0,10,0"/>
+    <TextBox x:Name="QueryInput" Grid.Column="1" MaxLength="200" VerticalContentAlignment="Center" KeyDown="Query_KeyDown"/>
+    <Button x:Name="SearchButton" Grid.Column="2" Content="搜索" Click="Search_Click" Margin="10,0,0,0"/>
+   </Grid>
+   <Expander x:Name="SettingsPanel" Header="音源账号与接入设置" Foreground="#34424D" Margin="0,12,0,10">
+    <Border Background="#FFF9E9" BorderBrush="#F1E6C7" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+     <StackPanel>
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <ComboBox x:Name="AccountSource" DisplayMemberPath="Name" SelectedValuePath="Id" SelectionChanged="AccountSource_Changed"/>
+       <TextBlock Grid.Column="1" Text="个人账号 Cookie（可选，Windows 当前用户加密保存）" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+      </Grid>
+      <PasswordBox x:Name="CookieInput" MaxLength="32000" Margin="0,8,0,0"/>
+      <StackPanel x:Name="SignerPanel" Visibility="Collapsed" Margin="0,8,0,0">
+       <TextBlock Text="汽水签名服务完整地址（HTTPS 或本机 HTTP；Cookie 不发送给签名服务）" TextWrapping="Wrap"/>
+       <DockPanel Margin="0,4,0,0">
+        <Button x:Name="CheckSignerButton" DockPanel.Dock="Right" Content="检查签名服务" Click="CheckSigner_Click" Margin="8,0,0,0" Padding="10,4"/>
+        <TextBox x:Name="SignerInput" MaxLength="2048" VerticalContentAlignment="Center"/>
+       </DockPanel>
+       <TextBlock Text="须兼容 Meting 签名接口；检查只验证连接和响应格式，不验证整曲权限，也不会自动保存。" TextWrapping="Wrap" FontSize="11" Foreground="#61768B" Margin="0,4,0,0"/>
+      </StackPanel>
+      <DockPanel Margin="0,8,0,0"><Button Content="保存此音源设置" Click="SaveAccount_Click" DockPanel.Dock="Right" Padding="12,5"/>
+       <TextBlock Text="首版手动填写自己的登录态，留空保存可清除。搜索可用不代表有整曲权限。" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/></DockPanel>
+     </StackPanel>
+    </Border>
+   </Expander>
+  </StackPanel>
+  <DataGrid x:Name="ResultsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+   SelectionMode="Single" SelectionChanged="Results_Changed" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+   <DataGrid.Columns>
+    <DataGridTextColumn Header="歌曲 / 版本" Binding="{Binding Title}" Width="2*" MinWidth="180"/>
+    <DataGridTextColumn Header="歌手" Binding="{Binding Artist}" Width="*" MinWidth="120"/>
+    <DataGridTextColumn Header="专辑" Binding="{Binding Album}" Width="*" MinWidth="120"/>
+    <DataGridTextColumn Header="时长" Binding="{Binding DurationLabel}" Width="65"/>
+    <DataGridTextColumn Header="来源" Binding="{Binding SourceLabel}" Width="75"/>
+   </DataGrid.Columns>
+  </DataGrid>
+  <StackPanel Grid.Row="2" Margin="0,12,0,0">
+   <TextBlock x:Name="StatusText" Text="搜索不会下载歌曲；选择结果后可试听或导入。" TextWrapping="Wrap" MinHeight="38"/>
+   <WrapPanel Margin="0,8,0,0">
+    <Button x:Name="PreviewButton" Content="试听所选歌曲" Click="Preview_Click" IsEnabled="False" Margin="0,0,8,0" Padding="14,7"/>
+    <Button x:Name="StopButton" Content="停止试听" Click="Stop_Click" Margin="0,0,8,0" Padding="14,7"/>
+    <Button x:Name="ImportButton" Content="导入完整音频" Click="Import_Click" IsEnabled="False" Margin="0,0,8,0" Padding="14,7"/>
+    <Button x:Name="CancelTaskButton" Content="取消任务" Click="Cancel_Click" IsEnabled="False" Padding="14,7"/>
+   </WrapPanel>
+   <TextBlock Text="音源适配参考 OpenMusic / Meting-API；歌曲可用性由音源与当前账号决定。" Foreground="#8292A1" FontSize="11" Margin="0,12,0,0"/>
+  </StackPanel>
+  <MediaElement x:Name="Audition" LoadedBehavior="Manual" UnloadedBehavior="Close" Width="0" Height="0" MediaFailed="Audition_Failed"/>
+ </Grid>
+</Window>

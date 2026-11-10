@@ -62,6 +62,8 @@ public sealed record LyricUnit(
     bool IsConfirmed,
     string? LanguageId = null)
 {
+    // Applied automatic timing is distinct from a human-confirmed tap.
+    public bool IsAutoTimed { get; init; }
     // Null inherits the line; an empty list explicitly selects the standard (no-role) style.
     public IReadOnlyList<Guid>? RoleIds { get; init; }
 }
@@ -87,6 +89,7 @@ public sealed record LyricLine(
     // Only an explicitly applied terminal tap authorizes overlap with the following row.
     // Store the time as well as the intent, so changing the boundary cannot reuse stale consent.
     public ProjectTime? ExplicitEndTime { get; init; }
+    public ReadingReview? AiReadingReview { get; init; }
 }
 
 public sealed record LyricDocument(

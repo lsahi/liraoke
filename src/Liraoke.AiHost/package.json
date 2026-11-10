@@ -1,0 +1,1 @@
+{"name":"liraoke-ai-host","private":true,"type":"module","version":"0.1.0","scripts":{"build":"node build.mjs","test":"node --test test/*.test.mjs"},"dependencies":{"@earendil-works/pi-agent-core":"1.4.0","@earendil-works/pi-ai":"1.4.0","cordis":"3.18.1","undici":"7.30.2"},"devDependencies":{"esbuild":"0.28.2"}}

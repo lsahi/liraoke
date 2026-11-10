@@ -52,7 +52,7 @@ public static class LyricLineInsertion
         {
             Timing = new TimeRange(ProjectTime.Zero, ProjectTime.Zero),
             RawInputTime = null,
-            IsConfirmed = false,
+            IsAutoTimed = false, IsConfirmed = false,
         }).ToArray(),
     };
 

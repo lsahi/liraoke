@@ -170,7 +170,7 @@ public partial class MainWindow
             bool changed = row.Line.LineId != source!.Id;
             row.Line.Update(source, document!.Language, _workspace!.Project.SubtitleStyle.ShowRomanization,
                 index == recording ? active : -1, index == recording ? completed : 0, _recordingEditTarget?.UnitId, _pendingTapUnitIds, _markers.Count);
-            row.Label.Text = $"第 {index + 1} 句" + RoleSummary(source);
+            row.Label.Text = $"第 {index + 1} 句" + RoleSummary(source) + ReadingReviewSummary(source);
             UpdateRoleSelectionVisual(row.Line, row.Select, source);
             if (changed) row.Scroll.ScrollToLeftEnd();
         }

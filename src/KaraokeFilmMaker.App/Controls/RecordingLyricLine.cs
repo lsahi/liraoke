@@ -175,6 +175,9 @@ public sealed class RecordingLyricLine : FrameworkElement
                 border, new Rect(cell.X, 1, cell.Width, _hasRomanization ? 43 : 29), 3, 3);
             DrawCentered(dc, cell.Text, 19, foreground, cell.X, cell.Width, 3);
             if (cell.Romaji.Length > 0) { DrawCentered(dc, cell.Romaji, 10, MutedInk, cell.X, cell.Width, 27); }
+            if (_line?.AiReadingReview is { Status: "failed" } review &&
+                (review.Issues.Count == 0 || _line.Units[cell.Index].DisplayRanges.Any(r => review.Issues.Any(i => r.Start < i.Range.EndExclusive && i.Range.Start < r.EndExclusive))))
+                dc.DrawLine(new Pen(Brushes.DarkOrange, 2), new Point(cell.X + 3, _hasRomanization ? 44 : 30), new Point(cell.X + cell.Width - 3, _hasRomanization ? 44 : 30));
             if (_roleColors.TryGetValue(cell.Id, out var colors))
                 for (int i = 0; i < colors.Length; i++)
                     dc.DrawRectangle(colors[i], null, new Rect(cell.X + 2, (_hasRomanization ? 41 : 27) + i * 3d / colors.Length,

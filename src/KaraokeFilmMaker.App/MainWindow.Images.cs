@@ -11,7 +11,7 @@ public partial class MainWindow
 {
     private async void ImportImageButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_workspace is null || _isBusy) { return; }
+        if (_workspace is null || (_isBusy && !_aiTaskRunning)) { return; }
         var dialog = new OpenFileDialog
         {
             Title = "导入图片到工作区",
@@ -25,7 +25,8 @@ public partial class MainWindow
 
     private async Task ImportImageAsync(string sourcePath)
     {
-        if (_workspace is null || _isBusy) { return; }
+        if (_workspace is null || (_isBusy && !_aiTaskRunning)) { return; }
+        if(_aiTaskRunning){await AddLibraryAssetDuringAiAsync(sourcePath,MediaKind.Image);return;}
         await RunUiOperationAsync(async () =>
         {
             ApplyLyricRowsToProject(); ApplyVideoRowsToProject();

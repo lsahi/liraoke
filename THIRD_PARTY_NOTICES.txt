@@ -35,6 +35,49 @@ license notices remain with the downloaded binaries. System drivers are not bund
 https://docs.nvidia.com/cuda/eula/
 https://docs.nvidia.com/deeplearning/cudnn/backend/latest/reference/eula.html
 
+AI chat runtime (feature/ai-integration):
+Node.js 22.23.4 Windows x64, MIT and bundled third-party notices:
+https://nodejs.org/dist/v22.23.4/
+Pi agent-core / pi-ai 1.4.0 (@earendil-works), MIT:
+https://github.com/badlogic/pi-mono
+Cordis 3.18.1, MIT: https://github.com/cordiverse/cordis
+Versions and npm integrity are locked in src/Liraoke.AiHost/package-lock.json.
+The package retains tools/ai-runtime/NODE-LICENSE.txt and DEPENDENCY-LICENSES.txt.
+Only node.exe and the bundled host ship; npm and node_modules are development-only.
+
 This is an internal MVP acceptance package, not a public-release distribution.
 Before public distribution, include the complete corresponding source and
 third-party license materials required by the selected binary builds.
+
+Music search provider integration (development):
+Selected Meting-API provider source, commit 073256842034beb8a0445d3a36cbef9f9d530e1b.
+https://github.com/qq01-hub/Meting-API ; related product https://github.com/qq01-hub/openmusic
+Upstream package.json declares MIT; see src/Liraoke.MusicHost/vendor/meting/PROVENANCE.txt
+for local modifications and outstanding release license review. No Folia/QRC AGPL code is bundled.
+Music worker dependency licenses are in tools/music-runtime/DEPENDENCY-LICENSES.txt.
+
+
+Optional local lyric alignment plugins (downloaded on user request):
+NextFire/mms-300m-ForcedAligner-karaoke-ja-Latn, CC BY-NC-SA 4.0.
+https://huggingface.co/NextFire/mms-300m-ForcedAligner-karaoke-ja-Latn
+Base model facebook/mms-300m has CC BY-NC 4.0 terms.
+https://huggingface.co/facebook/mms-300m
+MiliKara CTC alignment adapter: BilyHurington and contributors, MIT.
+Pinned source: 80c062ba280941b8957236cf37e3e0506ee293a0.
+https://github.com/BilyHurington/MiliKara
+Original source tree and LICENSE are retained in the optional plugin's upstream folder.
+Qwen3-ForcedAligner-0.6B-hf: Qwen team, Apache-2.0.
+https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B-hf
+The pinned model files are unmodified; their README/model cards are retained.
+Versions, immutable revisions, file sizes and SHA-256 checksums are recorded in
+src/KaraokeFilmMaker.Infrastructure/Alignment/Runtime/alignment-manifest.json.
+Python 3.12.10 (PSF), PyTorch 2.10.0 (BSD-style), Transformers 4.57.6 / 5.22.2
+(Apache-2.0), NumPy 1.26.4 (BSD), SoundFile 0.13.1 (BSD), Pydantic 2.12.5 (MIT):
+the original embedded-Python LICENSE and installed wheel license files are retained.
+GPU downloads also retain the applicable NVIDIA binary component license files.
+Models and Python environments are not included in the base application package.
+
+AI HTTP transport: undici 7.30.2, MIT, Node.js contributors.
+https://github.com/nodejs/undici
+Bundled to explicitly disable automatic chat network timeouts while retaining cancellation.
+Full license is included in tools/ai-runtime/DEPENDENCY-LICENSES.txt.

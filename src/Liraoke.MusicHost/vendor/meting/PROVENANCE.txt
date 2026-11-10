@@ -1,0 +1,9 @@
+Meting-API selected source files
+https://github.com/qq01-hub/Meting-API
+Commit: 073256842034beb8a0445d3a36cbef9f9d530e1b
+Package: 3.4.2; author: xizeyoupan; package.json declares MIT.
+No root LICENSE was present in this snapshot; redistribution license review remains required.
+Excluded: Folia/QRC (AGPL), lyrics modules, admin/server, browser security assets.
+Local edits: Node native crypto/buffer; isolated config; retain Netease trial flag.
+
+Local signer changes: endpoint validation; bounded non-redirecting requests; typed redacted errors; contract probe; propagate signer errors through Qishui resolver.

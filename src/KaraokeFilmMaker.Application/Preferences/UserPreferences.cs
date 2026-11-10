@@ -8,7 +8,8 @@ public sealed record SavedSubtitleStyle(Guid Id, string Name, SubtitleStyle Styl
 
 // Only the encrypted credential payload is persisted; secrets are never project data.
 public sealed record AiProviderPreference(Guid Id, [property: JsonRequired] string ProviderName, [property: JsonRequired] bool IsOfficial,
-    string? ApiPath = null, string? ProtectedCredentials = null);
+    string? ApiPath = null, string? ProtectedCredentials = null, string? Model = null,
+    string? ProviderId = null, string Protocol = "openai");
 
 public sealed record AiCredentials(string? APIKey = null, string? AK = null, string? SK = null);
 
@@ -18,12 +19,16 @@ public sealed record ApiConnectionPreference(string? Endpoint = null, string? Mo
     [JsonExtensionData] public Dictionary<string, JsonElement>? AdditionalSettings { get; init; }
 }
 
+public sealed record MusicAccountPreference(string SourceId, string ProtectedCredentials);
+
 public sealed record UserPreferences
 {
     public const int CurrentSchemaVersion = 1;
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+    public Ai.AsrPreference? Asr { get; init; }
     public IReadOnlyList<SavedSubtitleStyle> SubtitleStyles { get; init; } = [];
     public IReadOnlyList<SingingRole> Roles { get; init; } = [];
+    public IReadOnlyList<MusicAccountPreference> MusicAccounts { get; init; } = [];
     public IReadOnlyList<AiProviderPreference> AiProviders { get; init; } = [];
     // Legacy connection metadata is retained. AiProviders holds only OS-protected credential payloads.
     public IReadOnlyDictionary<string, ApiConnectionPreference> ApiConnections { get; init; } = new Dictionary<string, ApiConnectionPreference>();

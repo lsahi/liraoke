@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\KaraokeFilmMaker.Domain\KaraokeFilmMaker.Domain.csproj" />
@@ -23,4 +23,5 @@
     <EmbeddedResource Include="Separation\Runtime\gpu-runtime.json" />
   </ItemGroup>
 
+  <ItemGroup><EmbeddedResource Include="Alignment\Runtime\*" /></ItemGroup>
 </Project>

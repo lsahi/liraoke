@@ -12,7 +12,7 @@ namespace KaraokeFilmMaker.App.Tests;
 public sealed class AiInterfaceTests
 {
     [Fact]
-    public async Task ChatRepliesStayStubbedAndOverlayDoesNotResizeEditor()
+    public async Task UnconfiguredChatDoesNotSendAndOverlayDoesNotResizeEditor()
     {
         var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
@@ -37,14 +37,14 @@ public sealed class AiInterfaceTests
                 {
                     input.Text = request;
                     typeof(AiChatPanel).GetMethod("Send", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(chat, null);
-                    Assert.Equal("AI暂未接入", ((TextBlock)messages.Children[^1]).Text);
+                    Assert.Equal("请先添加并选择 AI 配置。", ((TextBlock)messages.Children[^1]).Text);
                 }
                 input.Text = "草稿";
                 typeof(AiChatPanel).GetMethod("Collapse_Click", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(chat, [chat, new RoutedEventArgs()]);
                 Assert.Equal(Visibility.Collapsed, chat.Visibility);
                 Assert.True(((FrameworkElement)window.FindName("PreviewSettingsPanel")).IsEnabled);
                 ((Button)window.FindName("AiFloatingButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.Equal("草稿", input.Text); Assert.Equal(7, messages.Children.Count);
+                Assert.Equal("草稿", input.Text); Assert.Equal(4, messages.Children.Count);
                 var pet = (AiPetImage)window.FindName("AiPet");
                 var launcher = (Button)window.FindName("AiFloatingButton");
                 launcher.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -97,6 +97,9 @@ public sealed class AiInterfaceTests
                 save.Invoke(config, null);
                 Assert.False(File.Exists(Path.Combine(root, "user-preferences.json")));
                 T Field<T>(string name) => (T)typeof(AiConfigurationWindow).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(config)!;
+                Field<ComboBox>("_model").SelectedIndex = 0;
+                Assert.Equal("deepseek-flash", Field<TextBox>("_name").Text);
+                Assert.Equal("https://api.deepseek.com/chat/completions", Field<TextBox>("_path").Text);
                 Field<TextBox>("_name").Text = "示例中转站"; Field<ComboBox>("_official").SelectedIndex = 1;
                 Field<TextBox>("_path").Text = "https://example.invalid/v1";
                 Field<PasswordBox>("_apiKey").Password = "dummy-configuration-test-key";

@@ -19,9 +19,9 @@ public partial class MainWindow
 
     private async void TimelineSeekRequested(double seconds)
     {
-        if (_playback.IsLoaded && !_isBusy)
+        if (_playback.IsLoaded && (!_isBusy || _aiTaskRunning))
         {
-            await RunUiOperationAsync(() => _playback.SeekAsync(ProjectTime.FromSeconds(seconds)));
+            await RunPlaybackOperationAsync(() => _playback.SeekAsync(ProjectTime.FromSeconds(seconds)));
         }
     }
 

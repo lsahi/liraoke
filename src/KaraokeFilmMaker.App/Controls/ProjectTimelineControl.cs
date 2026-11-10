@@ -14,6 +14,7 @@ public sealed record TimelineDrag(Guid ItemId, Guid? LineId, ProjectTime Start, 
 
 public sealed class ProjectTimelineControl : FrameworkElement
 {
+    public bool AllowEdits { get; set; } = true;
     private const double Gutter = 132, Ruler = 26, LyricHeight = 30, VideoHeight = 40, SongHeight = 40;
     private KaraokeProject? _project;
     private ProjectTime _position;
@@ -212,6 +213,7 @@ public sealed class ProjectTimelineControl : FrameworkElement
         if (track is { } target) { SelectedTrackIndex = target; }
         if (point.X < Gutter) { InvalidateVisual(); e.Handled = true; return; }
         double time = Seconds(point.X);
+        if(!AllowEdits){SeekRequested?.Invoke(time);e.Handled=true;return;}
         if (track is { } index)
         {
             var clip = _project.VideoClips.FirstOrDefault(item => item.TrackIndex == index

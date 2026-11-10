@@ -36,11 +36,12 @@ public partial class MainWindow : Window
     private WorkspaceSession? _workspace;
     private bool _isClosing;
 
-    public MainWindow() : this(new UserPreferenceStore(AppContext.BaseDirectory)) { }
+    public MainWindow() : this(new UserPreferenceStore(AppContext.BaseDirectory), new KaraokeFilmMaker.Infrastructure.Ai.AiStateStore(KaraokeFilmMaker.Infrastructure.Ai.AiStateStore.DefaultRoot)) { }
 
-    public MainWindow(UserPreferenceStore preferences)
+    public MainWindow(UserPreferenceStore preferences, KaraokeFilmMaker.Infrastructure.Ai.AiStateStore? aiState = null)
     {
         _userPreferenceStore = preferences;
+        _aiState=aiState??new(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(preferences.FilePath)!,"ai-state"));
         InitializeComponent();
         InitializeAiUi();
         _japaneseAnnotationService = new JapaneseAnnotationService(_japaneseReadingService);
@@ -247,6 +248,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        if(_aiTaskRunning){await AddLibraryAssetDuringAiAsync(dialog.FileName,MediaKind.Audio);return;}
         await RunUiOperationAsync(async () =>
         {
             ApplyLyricRowsToProject();
@@ -290,6 +292,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        if(_aiTaskRunning){await AddLibraryAssetDuringAiAsync(dialog.FileName,MediaKind.Video);return;}
         await RunUiOperationAsync(async () =>
         {
             ApplyLyricRowsToProject();
@@ -325,6 +328,15 @@ public partial class MainWindow : Window
 
     private async Task TogglePlaybackAsync()
     {
+        if(_aiTaskRunning)
+        {
+            if(!_playback.IsLoaded)return;
+            await RunPlaybackOperationAsync(async()=>{
+                if(_playback.IsPlaying)await _playback.PauseAsync();
+                else {await PrepareWorkAreaPlaybackAsync(); if(_playback.Position.Microseconds>=_playback.Duration.Microseconds)await _playback.SeekAsync(ProjectTime.Zero);await _playback.PlayAsync();}
+                PlayPauseButton.Content=_playback.IsPlaying?"暂停":"播放";
+            });return;
+        }
         if (!_playback.IsLoaded)
         {
             return;
@@ -362,7 +374,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        await RunUiOperationAsync(async () =>
+        await RunPlaybackOperationAsync(async () =>
         {
             await _playback.SeekAsync(ProjectTime.FromSeconds(PositionSlider.Value));
             StatusText.Text = $"已跳转到 {FormatTime(_playback.Position)}。";
@@ -374,6 +386,16 @@ public partial class MainWindow : Window
         // Chat text and buttons must never trigger playback or lyric recording shortcuts.
         if (AssistantPanel.IsKeyboardFocusWithin || AiFloatingButton.IsKeyboardFocusWithin
             || AiOpenButton.IsKeyboardFocusWithin || AiConfigurationButton.IsKeyboardFocusWithin) return;
+        if(_aiTaskRunning)
+        {
+            if(Keyboard.Modifiers==ModifierKeys.None && Keyboard.FocusedElement is not System.Windows.Controls.Primitives.TextBoxBase && _playback.IsLoaded)
+            {
+                if(e.Key is Key.Space or Key.P or Key.K){e.Handled=true;await TogglePlaybackAsync();}
+                else if(e.Key is Key.Left or Key.Right or Key.Home or Key.End){e.Handled=true;double seconds=e.Key==Key.Home?0:e.Key==Key.End?_playback.Duration.TotalSeconds:_playback.Position.TotalSeconds+(e.Key==Key.Left?-1:1);await RunPlaybackOperationAsync(()=>_playback.SeekAsync(ProjectTime.FromSeconds(Math.Clamp(seconds,0,_playback.Duration.TotalSeconds))));}
+                else if(e.Key==Key.Escape){e.Handled=true;await RunPlaybackOperationAsync(()=>_playback.PauseAsync());}
+            }
+            return;
+        }
         if (LyricsGrid.IsKeyboardFocusWithin || VideoGrid.IsKeyboardFocusWithin || _isBusy
             || Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
             || Keyboard.FocusedElement is Controls.MetronomeValueWheel
@@ -497,9 +519,9 @@ public partial class MainWindow : Window
         RefreshVideoPreview(position);
         RefreshTapHint(position);
         ProjectTimeline.Update(_workspace?.Project, position);
-        if (!_isBusy && _loopRange is { } loop && _playback.IsPlaying && position >= loop.End)
+        if ((!_isBusy || _aiTaskRunning) && _loopRange is { } loop && _playback.IsPlaying && position >= loop.End)
         {
-            await RunUiOperationAsync(() => _playback.SeekAsync(loop.Start));
+            await RunPlaybackOperationAsync(() => _playback.SeekAsync(loop.Start));
         }
 
         if (_playback.IsLoaded && !PositionSlider.IsMouseCaptureWithin)
@@ -715,6 +737,7 @@ public partial class MainWindow : Window
             PlayPauseButton.IsEnabled = false;
             ProjectTimeline.IsEnabled = false;
             ClipToolsPanel.IsEnabled = false;
+            if(_aiTaskRunning)EnableAiReadAndAdd();
             await operation();
             await SynchronizeMetronomeAsync();
             if (_workspace is not null) { await PrepareAudioVisualizationAsync(_workspace.Project); }
@@ -741,7 +764,7 @@ public partial class MainWindow : Window
         finally
         {
             // A completed in-memory edit must remain undoable even if a subsequent disk save fails.
-            RecordHistory(before);
+            RecordHistory(_aiTaskRunning && before is not null && _workspace is not null ? before with {Project=before.Project with {MediaAssets=_workspace.Project.MediaAssets}} : before);
             _isBusy = false;
             RefreshAccompanimentState();
             if (before?.Project.Id != _workspace?.Project.Id || before?.Project.WorkArea != _workspace?.Project.WorkArea

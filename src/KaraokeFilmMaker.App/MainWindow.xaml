@@ -46,7 +46,7 @@
                     <Button x:Name="OpenWorkspaceButton" Padding="12,7" Margin="4,2"
                             Click="OpenWorkspaceButton_Click" Content="打开工作区" />
                     <Button x:Name="MakeAccompanimentButton" Padding="12,7" Margin="4,2" Click="VocalSeparation_Click" Content="制作伴奏" ToolTip="为当前歌曲制作并关联伴奏；不替换歌曲或改变打轴。" />
-                    <Button Padding="12,7" Margin="4,2" Click="UndoProjectButton_Click" Content="撤销" />
+                    <Button x:Name="UndoProjectButton" Padding="12,7" Margin="4,2" Click="UndoProjectButton_Click" Content="撤销" />
                     <Button x:Name="SaveWorkspaceButton" Padding="12,7" Margin="4,2"
                             Click="SaveWorkspaceButton_Click" Content="保存" IsEnabled="False" />
                     <Button x:Name="OpenAudioButton" Visibility="Collapsed" Padding="12,7" Margin="4,2"
@@ -98,10 +98,10 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="项目素材" Foreground="#34424D" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <WrapPanel><Button Click="OpenAudioButton_Click" Content="+ 歌曲" Margin="0,0,6,6" /><Button Click="ImportVideoButton_Click" Content="+ 视频" Margin="0,0,6,6" /><Button x:Name="ImportImageButton" Click="ImportImageButton_Click" Content="+ 图片" Margin="0,0,0,6" /></WrapPanel>
+                        <WrapPanel><Button x:Name="SearchMusicButton" Click="SearchMusic_Click" Content="找歌" Margin="0,0,6,6" /><Button Click="OpenAudioButton_Click" Content="+ 歌曲" Margin="0,0,6,6" /><Button Click="ImportVideoButton_Click" Content="+ 视频" Margin="0,0,6,6" /><Button x:Name="ImportImageButton" Click="ImportImageButton_Click" Content="+ 图片" Margin="0,0,0,6" /></WrapPanel>
                         <TextBlock Text="双击视频 / 图片加入时间轴" Foreground="#687782" FontSize="11" Margin="0,0,0,8" />
                     </StackPanel>
-                    <Button DockPanel.Dock="Bottom" Click="RemoveMediaAsset_Click" Content="移除选中素材" Margin="0,8,0,0" ToolTip="从项目中移除素材；正在使用的素材会先提示确认" />
+                    <Button x:Name="RemoveMediaAssetButton" DockPanel.Dock="Bottom" Click="RemoveMediaAsset_Click" Content="移除选中素材" Margin="0,8,0,0" ToolTip="从项目中移除素材；正在使用的素材会先提示确认" />
                     <ListBox x:Name="MediaLibraryList" Background="#FFFFFF" Foreground="#34424D" BorderThickness="0" MouseDoubleClick="MediaLibraryList_MouseDoubleClick">
                         <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4,7">
                             <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailImageConverter}}" Height="60" Stretch="Uniform">
@@ -331,6 +331,18 @@
                             </WrapPanel>
                             <TextBlock x:Name="RecordingBrowseText" Foreground="#687782" VerticalAlignment="Center" Text="全部歌词 · 滚轮浏览" />
                         </DockPanel>
+
+                        <Border x:Name="AsrPanel" Visibility="Collapsed" Background="#FFFCF2" BorderBrush="#EFE3B9" BorderThickness="1" CornerRadius="5" Padding="6" Margin="0,2,0,5">
+                          <StackPanel>
+                            <WrapPanel>
+                              <Button Content="AI 发音校正" Click="CorrectReadings_Click" Padding="8,3" Margin="0,0,5,3" />
+                              <Button Content="ASR 配置…" Click="AsrConfiguration_Click" Padding="8,3" Margin="0,0,5,3" />
+                              <Button Content="下一处失败" Click="NextReadingReview_Click" Padding="8,3" Margin="0,0,5,3" />
+                              <Button Content="校正详情" Click="ReviewReading_Click" Padding="8,3" Margin="0,0,5,3" />
+                            </WrapPanel>
+                            <TextBlock x:Name="AsrStatusText" Text="根据歌曲自动校正读音并直接应用，可撤销；失败句会显示具体原因。" TextWrapping="Wrap" FontSize="11" Foreground="#806622" />
+                          </StackPanel>
+                        </Border>
                         <TextBlock x:Name="RecordingProgressText" Foreground="#42765C" FontSize="12" Margin="0,0,0,3" Text="项目尚无已应用打点" />
                         <TextBlock x:Name="NextTapText" Foreground="#92701F" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <Border x:Name="RecordingLanguageWarningPanel" Visibility="Collapsed" Background="#FFFCF2"
@@ -410,6 +422,16 @@
               <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <ContentControl x:Name="RecordingMonitorHost" Height="174" Margin="0,0,0,12" />
+                        <Expander x:Name="AlignmentPanel" Header="本地自动打轴 / 插件安装" IsExpanded="True" Background="#F1F8FF" BorderBrush="#CADDED" BorderThickness="1" Padding="6" Margin="0,2,0,5">
+                          <StackPanel><WrapPanel>
+                            <Button Content="打轴插件…" Click="AlignmentPlugins_Click" Padding="8,3" Margin="0,0,5,3" />
+                            <ComboBox x:Name="AlignmentBackend" SelectedIndex="0" MinWidth="150" Margin="0,0,5,3">
+                              <ComboBoxItem Content="自动选择模型" Tag="auto" /><ComboBoxItem Content="NextFire 日语歌声" Tag="nextfire" /><ComboBoxItem Content="Qwen 强制对齐" Tag="qwen" />
+                            </ComboBox>
+                            <Button Content="AI 自动打轴" Click="AlignLyrics_Click" Padding="8,3" Margin="0,0,5,3" />
+                            <CheckBox x:Name="AlignmentCorrectReadings" Content="打轴前校正日语读音" IsChecked="True" VerticalAlignment="Center" ToolTip="保留原有发音校正流程；人工已校对的读音可取消勾选。" />
+                          </WrapPanel><TextBlock x:Name="AlignmentStatus" Text="日语优先 NextFire，其他语言优先 Qwen；本地分段对齐，保留人工打点。" TextWrapping="Wrap" FontSize="11" Foreground="#3E647A" /></StackPanel>
+                        </Expander>
                     <GroupBox Header="角色分配" Margin="0,0,0,12">
                      <StackPanel x:Name="RecordingRolePanel" Margin="7">
                       <TextBlock x:Name="RoleSelectionText" Text="未选择时作用于浏览句" TextWrapping="Wrap" />

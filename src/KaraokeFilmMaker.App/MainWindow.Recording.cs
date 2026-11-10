@@ -101,6 +101,7 @@ public partial class MainWindow
         var key = (_workspace?.Project, LyricsGrid.SelectedIndex, TapModeCombo.SelectedIndex, _markers.Count, _undoneMarkers.Count);
         if (_lastTapHint == key) { return; }
         _lastTapHint = key;
+        RefreshAsrAvailability();
         UpdatePendingTapHighlights();
         RefreshRecordingLanguageWarning(-1);
         RecordingContextText.Text = string.Empty;
@@ -180,13 +181,13 @@ public partial class MainWindow
             : $"{(_browsedRecordingLineId is null ? "跟随打点" : "浏览中")} · {current + 1}/{document!.Lines.Count} 句 · 滚轮翻看";
         CurrentRecordingLabel.Text = line is null ? "当前句" : $"{(_browsedRecordingLineId is null ? "当前句" : "浏览句")} · {current + 1}" + LanguageSummary(line);
         NextRecordingLabel.Text = next < 0 ? "下一句 · 已到末句" : $"下一句 · {next + 1}";
-        CurrentRecordingLabel.Text += RoleSummary(line);
+        CurrentRecordingLabel.Text += RoleSummary(line) + ReadingReviewSummary(line);
         bool changed = CurrentRecordingLine.LineId != line?.Id;
         CurrentRecordingLine.Update(line, document?.Language ?? LyricLanguage.Chinese, show,
             current == recording ? active : -1, current == recording ? completed : 0, _recordingEditTarget?.UnitId,
             _pendingTapUnitIds, _markers.Count);
         var nextLine = next >= 0 ? document!.Lines[next] : null;
-        NextRecordingLabel.Text += RoleSummary(nextLine);
+        NextRecordingLabel.Text += RoleSummary(nextLine) + ReadingReviewSummary(nextLine);
         bool nextChanged = NextRecordingLine.LineId != nextLine?.Id;
         NextRecordingLine.Update(nextLine, document?.Language ?? LyricLanguage.Chinese, show,
             next == recording ? active : -1, next == recording ? completed : 0, _recordingEditTarget?.UnitId,

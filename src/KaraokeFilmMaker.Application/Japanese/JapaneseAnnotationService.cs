@@ -115,7 +115,7 @@ public sealed class JapaneseAnnotationService(IJapaneseReadingService readingSer
     private static bool IsKanji(int value) => value is >= 0x3400 and <= 0x9FFF
         or >= 0xF900 and <= 0xFAFF or >= 0x20000 and <= 0x323AF;
 
-    private static IReadOnlyList<LyricUnit> BuildUnits(IReadOnlyList<JapaneseToken> tokens, TimeRange timing)
+    public static IReadOnlyList<LyricUnit> BuildUnits(IReadOnlyList<JapaneseToken> tokens, TimeRange timing)
     {
         var reading = new StringBuilder();
         List<TextRange> mapping = [];

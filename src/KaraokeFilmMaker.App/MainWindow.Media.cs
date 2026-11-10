@@ -73,7 +73,7 @@ public partial class MainWindow
         _playbackRate = rate;
         if (_workspace is not null && _playback.IsLoaded)
         {
-            await RunUiOperationAsync(async () =>
+            await RunPlaybackOperationAsync(async () =>
             {
                 await PrepareProjectPlaybackAsync();
                 StatusText.Text = $"播放速度：{_playbackRate:0.##}×，歌曲时间轴保持原始时间。";

@@ -84,7 +84,9 @@ public sealed class MainWindowLifecycleTests
                 if (scenario.StartsWith("undone")) { undone.Push((ProjectTime.FromSeconds(1), ProjectTime.FromSeconds(1))); }
                 if (scenario.StartsWith("quick"))
                 {
-                    Method("RecordingUnitSelected").Invoke(window, [original.Lyrics.Lines[0].Id, original.Lyrics.Lines[0].Units[0].Id]);
+                    // Closing behavior must not depend on the user holding Ctrl/Shift in another application.
+                    Method("SelectRoleUnit").Invoke(window, [original.Lyrics.Lines[0].Id, original.Lyrics.Lines[0].Units[0].Id, System.Windows.Input.ModifierKeys.None]);
+                    Method("ShowQuickEdit").Invoke(window, null);
                     ((TextBox)window.FindName("QuickEditText")).Text = "清";
                     ((TextBox)window.FindName("QuickEditReading")).Text = "qing";
                 }

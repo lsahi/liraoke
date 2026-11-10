@@ -5,6 +5,8 @@ if (-not (Test-Path -LiteralPath $cpuMarker)) {
     & (Join-Path $PSScriptRoot 'bootstrap-demucs.ps1')
     if (-not (Test-Path -LiteralPath $cpuMarker)) { throw 'CPU separation runtime is incomplete; publishing refused.' }
 }
+& (Join-Path $PSScriptRoot 'bootstrap-ai.ps1')
+& (Join-Path $PSScriptRoot 'bootstrap-music.ps1') -SkipNodeBootstrap
 $project = Join-Path $repoRoot 'src/KaraokeFilmMaker.App/KaraokeFilmMaker.App.csproj'
 $projectXml = [xml](Get-Content -LiteralPath $project)
 $version = $projectXml.SelectSingleNode('/Project/PropertyGroup/Version').InnerText

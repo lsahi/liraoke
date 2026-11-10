@@ -8,6 +8,7 @@ namespace KaraokeFilmMaker.App;
 
 public partial class MainWindow
 {
+    private readonly KaraokeFilmMaker.Infrastructure.Ai.AiStateStore _aiState;
     private Point? _aiDragStart;
     private Point _aiDragOrigin;
     private bool _aiDragged, _aiPositioned;
@@ -16,6 +17,17 @@ public partial class MainWindow
 
     private void InitializeAiUi()
     {
+        AssistantPanel.Initialize(_userPreferenceStore, new KaraokeFilmMaker.Infrastructure.Ai.PiCordisChatService(toolFactory: () =>
+        {
+            Guid? projectId = _workspace?.Project.Id;
+            return new KaraokeFilmMaker.Application.Ai.AiToolBridge((name, args, token) =>
+                Dispatcher.InvokeAsync(async () => {
+                    var result = await ExecuteAiToolAsync(projectId, name, args, token);
+                    if (name == "create_workspace") projectId = _workspace?.Project.Id;
+                    return result;
+                }).Task.Unwrap());
+        }, memoryFactory: ()=>_aiState.Memories().Select(m=>m.Text).ToArray()), _aiState);
+        Closed += (_, _) => { AssistantPanel.Stop(); AssistantPanel.ClearInlineContent(); };
         AssistantPanel.CollapseRequested += (_, _) => CollapseAiChat();
         AssistantPanel.ConfigurationRequested += (_, _) => ShowAiConfiguration();
         Loaded += (_, _) => UpdateAiLayout();
@@ -30,7 +42,7 @@ public partial class MainWindow
     }
     private void AiOpen_Click(object sender, RoutedEventArgs e)
     {
-        if (AssistantPanel.Visibility != Visibility.Visible) _aiInspectorWasEnabled = PreviewSettingsPanel.IsEnabled;
+        if (AssistantPanel.Visibility != Visibility.Visible && !_aiTaskRunning) _aiInspectorWasEnabled = PreviewSettingsPanel.IsEnabled;
         AssistantPanel.Visibility = Visibility.Visible;
         PreviewSettingsPanel.IsEnabled = false;
         UpdateAiLayout(); AssistantPanel.FocusInput();
@@ -39,7 +51,7 @@ public partial class MainWindow
     {
         if (AssistantPanel.Visibility != Visibility.Visible) return;
         AssistantPanel.Visibility = Visibility.Collapsed;
-        PreviewSettingsPanel.IsEnabled = _aiInspectorWasEnabled;
+        PreviewSettingsPanel.IsEnabled = !_aiTaskRunning && _aiInspectorWasEnabled;
         AiOpenButton.Focus();
     }
     private void AiPetToggle_Click(object sender, RoutedEventArgs e)
@@ -49,7 +61,11 @@ public partial class MainWindow
         AiPet.Greet();
     }
     private void AiConfiguration_Click(object sender, RoutedEventArgs e) => ShowAiConfiguration();
-    private void ShowAiConfiguration() => new AiConfigurationWindow(_userPreferenceStore) { Owner = this }.ShowDialog();
+    private void ShowAiConfiguration()
+    {
+        new AiConfigurationWindow(_userPreferenceStore) { Owner = this }.ShowDialog();
+        AssistantPanel.RefreshConfigurations();
+    }
 
     private void UpdateAiLayout()
     {
@@ -60,7 +76,7 @@ public partial class MainWindow
         {
             _aiInspectorWidth = PreviewSettingsPanel.ActualWidth;
             anchor = PreviewSettingsPanel.TranslatePoint(new Point(), AiOverlayLayer);
-            height = PreviewSettingsPanel.ActualHeight;
+            height = Math.Max(300, PreviewSettingsPanel.ActualHeight);
         }
         else
         {

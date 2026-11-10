@@ -64,6 +64,28 @@ jobs:
         shell: pwsh
         run: ./scripts/bootstrap-media.ps1
 
+      - name: Bootstrap pinned AI runtime and run offline adapter tests
+        shell: pwsh
+        run: |
+          if (Test-Path ./scripts/bootstrap-ai.ps1) { ./scripts/bootstrap-ai.ps1 }
+          if (Test-Path ./scripts/bootstrap-music.ps1) { ./scripts/bootstrap-music.ps1 -SkipNodeBootstrap }
+
+      - name: Install Python for offline installer tests
+        if: ${{ hashFiles('scripts/test_alignment_download_ranges.py') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test resumable plugin downloads offline
+        if: ${{ hashFiles('scripts/test_alignment_download_ranges.py') != '' }}
+        shell: pwsh
+        run: |
+          $env:PYTHONUTF8='1'
+          python scripts/test_alignment_installer.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/test_alignment_download_ranges.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Restore
         shell: pwsh
         run: dotnet restore KaraokeFilmMaker.slnx --configfile NuGet.Config

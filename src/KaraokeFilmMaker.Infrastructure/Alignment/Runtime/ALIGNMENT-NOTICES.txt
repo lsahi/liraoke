@@ -1,0 +1,20 @@
+
+Optional local lyric alignment plugins (downloaded on user request):
+NextFire/mms-300m-ForcedAligner-karaoke-ja-Latn, CC BY-NC-SA 4.0.
+https://huggingface.co/NextFire/mms-300m-ForcedAligner-karaoke-ja-Latn
+Base model facebook/mms-300m has CC BY-NC 4.0 terms.
+https://huggingface.co/facebook/mms-300m
+MiliKara CTC alignment adapter: BilyHurington and contributors, MIT.
+Pinned source: 80c062ba280941b8957236cf37e3e0506ee293a0.
+https://github.com/BilyHurington/MiliKara
+Original source tree and LICENSE are retained in the optional plugin's upstream folder.
+Qwen3-ForcedAligner-0.6B-hf: Qwen team, Apache-2.0.
+https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B-hf
+The pinned model files are unmodified; their README/model cards are retained.
+Versions, immutable revisions, file sizes and SHA-256 checksums are recorded in
+src/KaraokeFilmMaker.Infrastructure/Alignment/Runtime/alignment-manifest.json.
+Python 3.12.10 (PSF), PyTorch 2.10.0 (BSD-style), Transformers 4.57.6 / 5.22.2
+(Apache-2.0), NumPy 1.26.4 (BSD), SoundFile 0.13.1 (BSD), Pydantic 2.12.5 (MIT):
+the original embedded-Python LICENSE and installed wheel license files are retained.
+GPU downloads also retain the applicable NVIDIA binary component license files.
+Models and Python environments are not included in the base application package.

@@ -166,7 +166,7 @@ public partial class MainWindow
     private void FitTimelineButton_Click(object sender, RoutedEventArgs e) => ProjectTimeline.FitToProject();
     private async void GoToStartButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_playback.IsLoaded) { await RunUiOperationAsync(() => _playback.SeekAsync(
+        if (_playback.IsLoaded) { await RunPlaybackOperationAsync(() => _playback.SeekAsync(
             IsPreviewMode ? _workspace?.Project.GetWorkArea().Start ?? ProjectTime.Zero : ProjectTime.Zero)); }
     }
     private sealed record LibraryItem(Guid Id, string Name, string Details, string? ThumbnailPath, MediaKind Kind);

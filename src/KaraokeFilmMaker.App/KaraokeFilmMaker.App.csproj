@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.5.1.0</Version>
+    <Version>0.5.1.8</Version>
     <AssemblyName>Liraoke</AssemblyName>
     <RootNamespace>KaraokeFilmMaker.App</RootNamespace>
     <Title>莉拉OK! / Liraoke</Title>
@@ -25,6 +25,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\..\tools\ai-runtime\*" Link="tools\ai-runtime\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\music-runtime\*" Link="tools\music-runtime\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Resource Include="Assets\Liraoke.ico" />
     <Resource Include="Assets\Liraoke.source.png" />
     <Resource Include="Assets\AiAssistant.png" />

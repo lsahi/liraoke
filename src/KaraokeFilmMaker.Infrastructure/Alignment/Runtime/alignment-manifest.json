@@ -1,0 +1,113 @@
+{
+  "python": {
+    "url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip",
+    "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+    "bytes": 11133606
+  },
+  "milikara": {
+    "url": "https://codeload.github.com/BilyHurington/MiliKara/zip/80c062ba280941b8957236cf37e3e0506ee293a0",
+    "sha256": "a4b000f9e48aa58693cea543bedce6556d44ab9770ac18f2148167e2b152be9c",
+    "bytes": 5552577
+  },
+  "pip": {
+    "url": "https://files.pythonhosted.org/packages/44/3c/d717024885424591d5376220b5e836c2d5293ce2011523c9de23ff7bf068/pip-25.3-py3-none-any.whl",
+    "sha256": "9655943313a94722b7774661c21049070f6bbb0a1516bf02f7c8d5d9201514cd",
+    "bytes": 1778622
+  },
+  "nextfire": {
+    "repo": "NextFire/mms-300m-ForcedAligner-karaoke-ja-Latn",
+    "revision": "2ab2b5f46539ee284703c281f286b01d2410ee12",
+    "files": [
+      {
+        "name": "added_tokens.json",
+        "bytes": 30,
+        "sha256": "ad6e3518e1ac75c1f277c3af874f8d73e62efe8bfb9ed78ff1745e6cffdd8318"
+      },
+      {
+        "name": "config.json",
+        "bytes": 2034,
+        "sha256": "665dbd5be3a170d0b53f86e702a4f65f755471a2d81c1e0cf35ba566a72bf382"
+      },
+      {
+        "name": "model.safetensors",
+        "bytes": 1261938632,
+        "sha256": "4d1d6fbb543534ab32bcceac5f5a42052c7fde3d16a83cbbce858473d5735042"
+      },
+      {
+        "name": "processor_config.json",
+        "bytes": 299,
+        "sha256": "8bc3c8d6d97ea61524d5c15d8554b4baf072d2264c0bda1839bc7a822c200d66"
+      },
+      {
+        "name": "README.md",
+        "bytes": 597,
+        "sha256": "3a23befdfce500c6da47026854b547698166f11d8567670344959d0fb4c1208d"
+      },
+      {
+        "name": "tokenizer_config.json",
+        "bytes": 1364,
+        "sha256": "b96525cd12d87182b9edd1613b47bc691f64184ad9d37c8a2f8b44a5fb3b8043"
+      },
+      {
+        "name": "vocab.json",
+        "bytes": 331,
+        "sha256": "26dc928520b2bde28e1c9e7fd425aae6b4eb40cd992bcb0bcc16ca6fada46491"
+      }
+    ]
+  },
+  "qwen": {
+    "repo": "Qwen/Qwen3-ForcedAligner-0.6B-hf",
+    "revision": "c07281df297b9905d24a508279258cccf987a064",
+    "files": [
+      {
+        "name": "chat_template.jinja",
+        "bytes": 551,
+        "sha256": "59b5ae119bda7c00089bba5f49af775791ea67c7aeb7d2b828cddda9463121bf"
+      },
+      {
+        "name": "config.json",
+        "bytes": 248029,
+        "sha256": "82ac390b36a8f80c5a0c4e202367debd149e5d8c30abe4cf5eed439101b1c5ce"
+      },
+      {
+        "name": "model.safetensors",
+        "bytes": 1835545960,
+        "sha256": "00568245ceca5af1991d28562a75fe1ddc9bfeb041c27fda66947ea05c47fb86"
+      },
+      {
+        "name": "processor_config.json",
+        "bytes": 487,
+        "sha256": "bc0b230081b44e629dd5b9045b78495615c1831b4b9f4cffe97bd37e82a6156a"
+      },
+      {
+        "name": "README.md",
+        "bytes": 9419,
+        "sha256": "30de8315ece609b239c719539336b99188a2a92aef89a1fdcd60b11e40abd063"
+      },
+      {
+        "name": "tokenizer.json",
+        "bytes": 11429842,
+        "sha256": "cadfb9cbd9ff8f4e309075ec6a71b063295ff796afb4b5dbc0fd2873fbb301f2"
+      },
+      {
+        "name": "tokenizer_config.json",
+        "bytes": 998,
+        "sha256": "945e980986de2ca7768f3326bfdbb4fbea3406f972b8ae0be233089f2b253c11"
+      }
+    ]
+  },
+  "torch": {
+    "cpu": {
+      "url": "https://download-r2.pytorch.org/whl/cpu/torch-2.10.0%2Bcpu-cp312-cp312-win_amd64.whl",
+      "sha256": "21cb5436978ef47c823b7a813ff0f8c2892e266cfe0f1d944879b5fba81bf4e1",
+      "bytes": 113671330,
+      "name": "torch-2.10.0+cpu-cp312-cp312-win_amd64.whl"
+    },
+    "gpu": {
+      "url": "https://download-r2.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp312-cp312-win_amd64.whl",
+      "sha256": "fbde8f6a9ec8c76979a0d14df21c10b9e5cab6f0d106a73ca73e2179bc597cae",
+      "bytes": 2867409626,
+      "name": "torch-2.10.0+cu128-cp312-cp312-win_amd64.whl"
+    }
+  }
+}

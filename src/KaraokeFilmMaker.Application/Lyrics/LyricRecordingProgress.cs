@@ -8,7 +8,7 @@ public sealed record LyricRecordingProgress(int TotalUnits, int ConfirmedUnits, 
 {
     public bool IsComplete => TotalUnits > 0 && ConfirmedUnits == TotalUnits;
 
-    public static bool IsCompleted(LyricUnit unit) => unit.IsConfirmed && unit.Timing.Duration.Microseconds > 0;
+    public static bool IsCompleted(LyricUnit unit) => (unit.IsConfirmed || unit.IsAutoTimed) && unit.Timing.Duration.Microseconds > 0;
 
     public static LyricRecordingProgress From(LyricDocument document)
     {

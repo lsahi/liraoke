@@ -21,13 +21,18 @@
     </StackPanel>
    </DockPanel>
    <ScrollViewer x:Name="ConversationScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel x:Name="Messages"><TextBlock Text="AI暂未接入" Foreground="#687782" Margin="0,12"/></StackPanel>
+    <StackPanel x:Name="Messages"><TextBlock Text="选择 AI 配置后开始聊天。工具读取的项目数据会发送给所选 AI 服务。" TextWrapping="Wrap" Foreground="#687782" Margin="0,12"/></StackPanel>
    </ScrollViewer>
    <StackPanel x:Name="Composer" Grid.Row="2" Margin="0,10,0,0">
+    <DockPanel Margin="0,0,0,6">
+     <Button DockPanel.Dock="Right" Content="记忆" Click="Memory_Click" Padding="6,3" Margin="5,0,0,0"/>
+     <Button x:Name="NewChatButton" DockPanel.Dock="Right" Content="新对话" Click="NewChat_Click" Padding="6,3" Margin="5,0,0,0"/>
+     <ComboBox x:Name="ConfigurationPicker" DisplayMemberPath="ProviderName" MinWidth="80" AutomationProperties.Name="当前 AI 配置" SelectionChanged="Configuration_Changed"/>
+    </DockPanel>
     <TextBox x:Name="MessageInput" AutomationProperties.Name="给 AI 助手的消息" AcceptsReturn="True" TextWrapping="Wrap"
       VerticalScrollBarVisibility="Auto" Height="76" MaxLength="16000" KeyDown="MessageInput_KeyDown"/>
     <DockPanel x:Name="SendRow" Margin="0,8,0,0">
-     <Button DockPanel.Dock="Right" Content="发送" Click="Send_Click" Padding="12,5"/>
+     <Button x:Name="SendButton" DockPanel.Dock="Right" Content="发送" Click="Send_Click" Padding="12,5"/>
      <TextBlock Text="Enter 发送 · Shift 换行" FontSize="11" Foreground="#687782" VerticalAlignment="Center"/>
     </DockPanel>
    </StackPanel>

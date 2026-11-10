@@ -56,12 +56,12 @@ public sealed class UserPreferenceStore(string appDirectory)
         current with { Roles = current.Roles.Where(role => role.Id != id).ToArray() });
 
     public UserPreferences SaveAiProvider(Guid id, string providerName, bool? isOfficial,
-        string? apiPath, AiCredentials credentials)
+        string? apiPath, AiCredentials credentials, string? model = null, string? providerId = null, string protocol = "openai")
     {
-        if (isOfficial is null) throw new InvalidDataException("请选择官方 API 或中转站 API（isOfficial）。");
+        if (isOfficial is null) throw new InvalidDataException("请选择官方 API 或中转站 API。");
         string name = providerName.Trim();
         string? path = string.IsNullOrWhiteSpace(apiPath) ? null : apiPath.Trim();
-        var provider = new AiProviderPreference(id, name, isOfficial.Value, path);
+        var provider = new AiProviderPreference(id, name, isOfficial.Value, path, Model: EmptyToNull(model?.Trim()), ProviderId: providerId, Protocol: protocol);
         ValidateAiProviders([provider]);
         var normalized = new AiCredentials(EmptyToNull(credentials.APIKey), EmptyToNull(credentials.AK), EmptyToNull(credentials.SK));
         if (new[] { normalized.APIKey, normalized.AK, normalized.SK }.Any(value => value?.Length > 16384))
@@ -78,6 +78,56 @@ public sealed class UserPreferenceStore(string appDirectory)
         finally { CryptographicOperations.ZeroMemory(plaintext); }
     }
 
+    public UserPreferences SaveMusicAccount(string sourceId, KaraokeFilmMaker.Application.Music.MusicSourceCredentials credentials)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(sourceId, "^[a-z][a-z0-9-]{0,63}$")) throw new InvalidDataException("未知音源。");
+        if (credentials.Cookie.Length > 32000 || credentials.Cookie.Any(c => c is '\r' or '\n')) throw new InvalidDataException("Cookie 内容无效。");
+        if (!string.IsNullOrWhiteSpace(credentials.SignerEndpoint)
+            && (!Uri.TryCreate(credentials.SignerEndpoint, UriKind.Absolute, out var endpoint)
+                || endpoint.Scheme != "https" && !(endpoint.Scheme == "http" && endpoint.IsLoopback)
+                || !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Fragment))) throw new InvalidDataException("签名服务请使用 HTTPS 或本机回环 HTTP 地址。");
+        byte[] plain = JsonSerializer.SerializeToUtf8Bytes(credentials);
+        try
+        {
+            string encrypted = Convert.ToBase64String(ProtectedData.Protect(plain, Encoding.UTF8.GetBytes("Liraoke.Music.v1"), DataProtectionScope.CurrentUser));
+            return Update(current => current with { MusicAccounts = [.. current.MusicAccounts.Where(x => x.SourceId != sourceId), new(sourceId, encrypted)] });
+        }
+        finally { CryptographicOperations.ZeroMemory(plain); }
+    }
+    public static KaraokeFilmMaker.Application.Music.MusicSourceCredentials ReadMusicAccount(MusicAccountPreference? account)
+    {
+        if (account is null) return new();
+        try
+        {
+            byte[] plain = ProtectedData.Unprotect(Convert.FromBase64String(account.ProtectedCredentials), Encoding.UTF8.GetBytes("Liraoke.Music.v1"), DataProtectionScope.CurrentUser);
+            try { return JsonSerializer.Deserialize<KaraokeFilmMaker.Application.Music.MusicSourceCredentials>(plain) ?? new(); }
+            finally { CryptographicOperations.ZeroMemory(plain); }
+        }
+        catch (Exception e) when (e is CryptographicException or FormatException or JsonException)
+        { throw new InvalidDataException("音源账号无法解密，请重新填写并保存。"); }
+    }
+
+    public UserPreferences SaveAsr(KaraokeFilmMaker.Application.Ai.AsrPreference value, AiCredentials credentials)
+    {
+        KaraokeFilmMaker.Infrastructure.Ai.QwenReadingCorrectionService.ValidateSettings(value, credentials);
+        value = value with { Endpoint = KaraokeFilmMaker.Infrastructure.Ai.QwenReadingCorrectionService.ResolveEndpoint(value) };
+        byte[] plain = JsonSerializer.SerializeToUtf8Bytes(credentials);
+        try {
+            string encrypted = Convert.ToBase64String(ProtectedData.Protect(plain, CredentialEntropy, DataProtectionScope.CurrentUser));
+            return Update(current => current with { Asr = value with { ProtectedCredentials = encrypted } });
+        } finally { CryptographicOperations.ZeroMemory(plain); }
+    }
+    public static AiCredentials ReadAsrCredentials(KaraokeFilmMaker.Application.Ai.AsrPreference settings) =>
+        ReadAiCredentials(new AiProviderPreference(Guid.Empty, "ASR", !settings.Local, ProtectedCredentials: settings.ProtectedCredentials));
+
+    public bool ContainsCredential(string text)
+    {
+        if (System.Text.RegularExpressions.Regex.IsMatch(text, @"(?i)\bsk-[a-z0-9_-]{12,}|\b(?:api[_ -]?key|secret[_ -]?key|access[_ -]?key|AK|SK)\s*[:=]\s*\S{8,}")) return true;
+        var prefs = Load();
+        var all = prefs.AiProviders.Select(ReadAiCredentials).ToList();
+        if (prefs.Asr is not null) all.Add(ReadAsrCredentials(prefs.Asr));
+        return all.SelectMany(c => new[] { c.APIKey, c.AK, c.SK }).Any(k => k is { Length: >= 8 } && text.Contains(k, StringComparison.Ordinal));
+    }
     public UserPreferences DeleteAiProvider(Guid id) => Update(current => current with
         { AiProviders = current.AiProviders.Where(item => item.Id != id).ToArray() });
 
@@ -108,10 +158,12 @@ public sealed class UserPreferenceStore(string appDirectory)
             if (item is null || item.Id == Guid.Empty || !ids.Add(item.Id) || string.IsNullOrWhiteSpace(item.ProviderName)
                 || item.ProviderName != item.ProviderName.Trim() || item.ProviderName.Length > 80
                 || item.ProviderName.Any(char.IsControl) || !names.Add(item.ProviderName))
-                throw new InvalidDataException("providerName 必填，限 1–80 个字符，配置名称不能重复。");
+                throw new InvalidDataException("配置名称必填，限 1–80 个字符，不能重复。");
             if (item.ApiPath is not null && (!Uri.TryCreate(item.ApiPath, UriKind.Absolute, out var uri)
                 || uri.Scheme is not ("http" or "https") || !string.IsNullOrEmpty(uri.UserInfo)))
-                throw new InvalidDataException("apiPath 请填写完整的 HTTP / HTTPS 地址，或留空；不要在地址中嵌入账户密码。");
+                throw new InvalidDataException("请填写完整的 HTTP / HTTPS 地址，或留空；不要在地址中嵌入账户密码。");
+            if (item.Model?.Length > 200 || item.Model?.Any(char.IsControl) == true || item.ProviderId?.Length > 100 || item.Protocol is not ("openai" or "deepseek" or "anthropic"))
+                throw new InvalidDataException("模型名称或接口协议无效。");
             if (item.ProtectedCredentials?.Length > 100000) throw new InvalidDataException("AI 凭据数据无效。");
         }
     }
@@ -141,6 +193,10 @@ public sealed class UserPreferenceStore(string appDirectory)
     private static void Validate(UserPreferences preferences)
     {
         ValidateAiProviders(preferences.AiProviders);
+        if (preferences.MusicAccounts is null || preferences.MusicAccounts.Count > 50
+            || preferences.MusicAccounts.Any(x => x is null || string.IsNullOrWhiteSpace(x.SourceId) || x.ProtectedCredentials?.Length > 100000)
+            || preferences.MusicAccounts.Select(x => x.SourceId).Distinct().Count() != preferences.MusicAccounts.Count)
+            throw new InvalidDataException("音源账号设置无效。");
         if (preferences.SchemaVersion != UserPreferences.CurrentSchemaVersion)
             throw new InvalidDataException("此用户偏好格式不受当前版本支持，未改写文件。");
         if (preferences.SubtitleStyles is null || preferences.ApiConnections is null || preferences.SubtitleStyles.Count > 200

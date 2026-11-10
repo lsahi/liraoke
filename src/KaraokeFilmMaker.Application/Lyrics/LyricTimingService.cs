@@ -16,7 +16,7 @@ public sealed class LyricTimingService
             {
                 Timing = new TimeRange(ProjectTime.Zero, ProjectTime.Zero),
                 RawInputTime = null,
-                IsConfirmed = false,
+                IsAutoTimed = false, IsConfirmed = false,
             }).ToArray(),
         }).ToArray(),
     };
@@ -230,7 +230,7 @@ public sealed class LyricTimingService
                 Timing = new TimeRange(
                     new ProjectTime(timing.Start.Microseconds + start),
                     new ProjectTime(timing.Start.Microseconds + end)),
-                IsConfirmed = false,
+                IsAutoTimed = false, IsConfirmed = false,
             };
         }).ToArray();
         return line with { Timing = timing, Units = units, ReviewState = ReviewState.Unreviewed, ExplicitEndTime = null };

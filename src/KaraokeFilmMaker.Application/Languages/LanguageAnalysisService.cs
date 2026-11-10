@@ -118,7 +118,7 @@ public sealed class LanguageAnalysisService(LanguageRegistry registry)
                 RomanizedSubtitleRuns: result.RomanizedSubtitleRuns);
             units.AddRange(result.Units.Select(unit => unit with
             { DisplayRanges = unit.DisplayRanges.Select(range => Shift(range, span.Range.Start)).ToArray(), LanguageId = span.LanguageId,
-                IsConfirmed = false, RawInputTime = null }));
+                IsAutoTimed = false, IsConfirmed = false, RawInputTime = null }));
             outputSpans[index] = span with { NeedsReview = span.DetectionNeedsReview || span.LanguageId == LanguageIds.Unknown || result.NeedsReview,
                 Diagnostic = result.Diagnostic ?? span.Diagnostic, AdaptorVersion = adaptor?.Version ?? span.AdaptorVersion,
                 // Unknown language uses the host's plain units; uncertainty is not a policy failure.

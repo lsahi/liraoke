@@ -73,10 +73,10 @@ public partial class MainWindow
 
     private async Task EnforceWorkAreaPlaybackAsync()
     {
-        if (_isBusy || !_playback.IsPlaying || !IsPreviewMode || _workspace?.Project.WorkArea is not { } area) { return; }
+        if ((_isBusy && !_aiTaskRunning) || (_aiTaskRunning && _interactivePlayback.CurrentCount==0) || !_playback.IsPlaying || !IsPreviewMode || _workspace?.Project.WorkArea is not { } area) { return; }
         if (_playback.Position >= area.End)
         {
-            await RunUiOperationAsync(async () =>
+            await RunPlaybackOperationAsync(async () =>
             {
                 await _playback.PauseAsync();
                 await _playback.SeekAsync(area.End);
@@ -85,6 +85,6 @@ public partial class MainWindow
             });
         }
         else if (_playback.Position < area.Start)
-        { await RunUiOperationAsync(() => _playback.SeekAsync(area.Start)); }
+        { await RunPlaybackOperationAsync(() => _playback.SeekAsync(area.Start)); }
     }
 }

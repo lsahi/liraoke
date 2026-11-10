@@ -16,7 +16,9 @@ public partial class MainWindow
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (_allowClose || _workspace is null) { return; }
+        AssistantPanel.Stop();
+        _assetImportCancellation?.Cancel();
+        if (_allowClose || (_workspace is null && !AssistantPanel.IsSending && !_isBusy && !_addingAiAsset)) { return; }
         e.Cancel = true;
         if (_closingRequested) { return; }
         _closingRequested = true;
@@ -32,7 +34,7 @@ public partial class MainWindow
         try
         {
             _operationCancellation?.Cancel();
-            while (_isBusy || _savingRecovery) { await Task.Delay(50); }
+            while (_isBusy || _savingRecovery || AssistantPanel.IsSending || _addingAiAsset) { await Task.Delay(50); }
             if (_workspace is null) { _allowClose = true; Close(); return; }
             if ((_markers.Count > 0 || _undoneMarkers.Count > 0) && ShowClosePrompt(
                 $"还有 {_markers.Count} 个未应用打点、{_undoneMarkers.Count} 个可重做打点，只在内存中。\n建议返回打轴，完成当前句后按 Enter 应用并保存。\n仍要放弃这些打点并关闭吗？",

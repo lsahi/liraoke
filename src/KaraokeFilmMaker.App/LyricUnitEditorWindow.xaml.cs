@@ -111,7 +111,7 @@ public partial class LyricUnitEditorWindow : Window
                     ? KanaRomanizer.RomanizeSingingUnit(mora[index], index + 1 < mora.Count ? mora[index + 1] : null) : null,
                 Timing = new TimeRange(new ProjectTime(start), new ProjectTime(end)),
                 RawInputTime = index == 0 ? unit.RawInputTime : null,
-                IsConfirmed = false,
+                IsAutoTimed = false, IsConfirmed = false,
             };
             _rows.Insert(position + index, CreateRow(split));
         }
@@ -176,7 +176,7 @@ public partial class LyricUnitEditorWindow : Window
         if (index < 0 || target < 0 || target >= _rows.Count) { return; }
         TimeRange[] slots = _rows.Select(row => row.ToUnit().Timing).ToArray();
         _rows.Move(index, target);
-        LyricUnit[] units = _rows.Select((row, position) => row.ToUnit() with { Timing = slots[position], IsConfirmed = false }).ToArray();
+        LyricUnit[] units = _rows.Select((row, position) => row.ToUnit() with { Timing = slots[position], IsAutoTimed = false, IsConfirmed = false }).ToArray();
         _rows.Clear();
         foreach (var unit in units) { _rows.Add(CreateRow(unit)); }
         UnitsGrid.SelectedIndex = target;
