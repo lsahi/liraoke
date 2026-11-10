@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.5.1.8</Version>
+    <Version>0.5.2.0</Version>
     <AssemblyName>Liraoke</AssemblyName>
     <RootNamespace>KaraokeFilmMaker.App</RootNamespace>
     <Title>莉拉OK! / Liraoke</Title>
