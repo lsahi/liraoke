@@ -93,6 +93,19 @@ public sealed class AiApprovalTests
         await task;var current=(WorkspaceSession)Get(w,"_workspace")!;Assert.NotEqual(p.Id,current.Project.Id);Assert.True(File.Exists(oldFile));Assert.True(File.Exists(current.ProjectFilePath));
         Assert.Equal("新歌曲",(await new JsonProjectRepository().LoadAsync(current.ProjectFilePath!)).Title);
     });
+    [Theory][InlineData(true)][InlineData(false)]
+    public Task LyricsImportRequiresApprovalAndSavesUndo(bool approve)=>Run(async(w,root)=>{
+        var p=KaraokeProject.Create("Lyrics",DateTimeOffset.UtcNow);string file=Path.Combine(root,"Lyrics.lrn");
+        Set(w,"_workspace",new WorkspaceSession(root,p,file));
+        var panel=(AiChatPanel)w.FindName("AssistantPanel");var messages=(StackPanel)panel.FindName("Messages");int before=messages.Children.Count;
+        var pending=Call(w,p.Id,"import_lyrics","{\"format\":\"txt\",\"text\":\"hello world\"}");
+        for(int i=0;i<200 && messages.Children.Count==before && !pending.IsCompleted;i++)await Task.Delay(10);
+        Assert.False(pending.IsCompleted);Assert.Equal(p,((WorkspaceSession)Get(w,"_workspace")!).Project);Assert.False(File.Exists(file));
+        Decide(w,approve);var response=JsonSerializer.SerializeToElement(await pending);
+        Assert.Equal(approve,response.GetProperty("approved").GetBoolean());
+        if(approve){Assert.True(response.GetProperty("saved").GetBoolean());Assert.Equal("hello world",Assert.Single((await new JsonProjectRepository().LoadAsync(file)).Lyrics.Lines).PrimaryText);Assert.Single((Stack<KaraokeProject>)Get(w,"_undoProjects")!);}
+        else Assert.False(File.Exists(file));
+    });
     private static void Snapshot(MainWindow w,string name)
     {
         string? directory=Environment.GetEnvironmentVariable("KFM_RENDER_SNAPSHOT_DIR");if(directory is null)return;
