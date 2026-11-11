@@ -60,6 +60,21 @@ public sealed class AlignmentResultCommitTests
     static AlignmentOutcome Output(KaraokeProject p,int successful=8)=>new(p.Lyrics.Lines.Select((l,i)=>
         i<successful?new AlignmentLineResult(l.Id,[new(l.Units[0].Id,i*2+1,i*2+2)]):new(l.Id,[],"句内出现零时长、逆序或越界，请手动检查。")).ToArray(),"fixture.log");
 
+    [Fact] public Task ReviewWarningAppearsInRecordingView()=>Sta(async(w,root,p)=>
+    {
+        await Owned(w,async()=>{var output=Output(p);output=output with {Lines=output.Lines.Select((l,i)=>i==0?l with {Review="AI识别失败，推荐人工审核"}:l).ToArray()};await Apply(w,p,output);});
+        Call(w,"ShowRecordingLines",0,0,0);
+        Assert.Contains("AI识别失败，推荐人工审核",((System.Windows.Controls.TextBlock)w.FindName("CurrentRecordingLabel")).Text);
+        string? destination=Environment.GetEnvironmentVariable("KFM_RENDER_SNAPSHOT_DIR");
+        if(destination is not null)
+        {
+            w.Width=1440;w.Height=940;w.Show();
+            ((System.Windows.Controls.TabControl)w.FindName("EditorTabs")).SelectedItem=w.FindName("RecordingTab");w.UpdateLayout();Set(w,"_browsedRecordingLineId",p.Lyrics.Lines[0].Id);Call(w,"ShowRecordingLines",0,0,0);w.UpdateLayout();
+            var content=(System.Windows.FrameworkElement)w.Content;
+            var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)content.ActualWidth,(int)content.ActualHeight,96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(content);
+            var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));Directory.CreateDirectory(destination);using var file=File.Create(Path.Combine(destination,"alignment-review.png"));encoder.Save(file);
+        }
+    });
     [Fact] public Task OwnBusyScopeCommitsSavesAndRetainsNewAssetsWithAccurateSkipCounts()=>Sta(async(w,root,p)=>
     {
         var asset=new MediaAsset(Guid.NewGuid(),"added","media/added.png",MediaKind.Image,ProjectDuration.Zero,"hash");

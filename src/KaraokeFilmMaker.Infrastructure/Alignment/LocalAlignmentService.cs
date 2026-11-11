@@ -156,7 +156,7 @@ public sealed class LocalAlignmentService
                 string surface=string.Concat(u.DisplayRanges.Select(r=>l.PrimaryText.Substring(r.Start,r.Length)));
                 string lang=u.LanguageId is "ja" or "zh" or "en"?u.LanguageId:u.Reading.Any(c=>c is >= '\u3040' and <= '\u30ff')?"ja":u.Reading.Any(char.IsAsciiLetter)?"en":"zh";
                 string reading=lang=="ja"&&surface==u.Reading?u.Reading switch{"は"=>"わ","へ"=>"え",_=>u.Reading}:u.Reading;
-                return new{id=u.Id,reading,surface,language=lang};
+                return new{id=u.Id,reading,surface,language=lang, fixedStart=(u.IsConfirmed || u.RawInputTime is not null) ? (double?)u.Timing.Start.TotalSeconds : null, fixedEnd=(u.IsConfirmed || u.RawInputTime is not null) ? (double?)u.Timing.End.TotalSeconds : null};
             }).ToArray()}).ToArray();
             await File.WriteAllTextAsync(request,JsonSerializer.Serialize(new{audio=wav,audioRole="vocals",separationModel="htdemucs",lrc,lines},Json),token);
             string worker=WriteResource(job,"alignment-worker.py");

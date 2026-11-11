@@ -21,6 +21,7 @@ public partial class MainWindow
         if (name is "get_alignment_plugins" or "get_alignment_install_guide" or "open_alignment_plugins" or "install_alignment_plugin" or "align_lyrics") return await ExecuteAlignmentToolAsync(name, args, token);
         if (name == "open_asr_configuration") return new { configured = ShowAsrConfiguration() };
         if (name == "correct_japanese_readings") return await StartReadingCorrectionAsync(true, token);
+        if(name is "import_lyrics" or "edit_lyrics") return await ExecuteAiLyricsAsync(name,args,token);
         bool edit = name is "update_subtitle_style" or "update_song_title" or "set_visualization" or "import_music" or "create_workspace";
         if (!edit && name != "seek_preview") return await ExecuteAiToolCoreAsync(projectId, name, args, token);
         if (_aiActionPending) throw new InvalidOperationException("请先完成当前待批准操作。");

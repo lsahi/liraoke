@@ -90,6 +90,8 @@ public sealed record LyricLine(
     // Store the time as well as the intent, so changing the boundary cannot reuse stale consent.
     public ProjectTime? ExplicitEndTime { get; init; }
     public ReadingReview? AiReadingReview { get; init; }
+    public ProjectTime? AutoAlignmentEnd { get; init; }
+    public string? AlignmentReviewMessage { get; init; }
 }
 
 public sealed record LyricDocument(

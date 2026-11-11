@@ -3,6 +3,44 @@ import argparse, hashlib, json, os, pathlib, re, sys, time, traceback
 os.environ.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_HUB_DISABLE_TELEMETRY='1', TOKENIZERS_PARALLELISM='false')
 def emit(message): print(json.dumps({'message': message}, ensure_ascii=False), flush=True)
 
+
+def repair_units(raw, units, start, end):
+    import math
+    n=len(units)
+    if len(raw)!=n or not n or end<=start: raise ValueError('返回单元数量或句段范围无效。')
+    points=[dict(x) for x in raw]
+    fixed={i for i,u in enumerate(units) if u.get('fixedStart') is not None}
+    for i in fixed: points[i].update(start=units[i]['fixedStart'],end=units[i]['fixedEnd'])
+    def valid(x): return all(isinstance(x.get(k),(int,float)) and math.isfinite(x[k]) for k in ('start','end')) and start<=x['start']<x['end']<=end
+    # Measure union of actual overlap intervals, not summed duplicate overlaps.
+    events=[]
+    for x in points:
+        if valid(x): events.extend([(x['start'],1),(x['end'],-1)])
+    active=0;previous=start;overlap=0
+    for time,delta in sorted(events):
+        if active>1: overlap+=time-previous
+        active+=delta;previous=time
+    anchors={};previous_index=-1;previous_end=start
+    for i,x in enumerate(points):
+        next_fixed=next((j for j in sorted(fixed) if j>i),None)
+        enough_after=x.get('end') is not None and (end-x['end'] >= (n-i-1)*.001 if next_fixed is None else points[next_fixed]['start']-x['end'] >= (next_fixed-i-1)*.001)
+        if valid(x) and x['start']-previous_end >= (i-previous_index-1)*.001 and enough_after:
+            anchors[i]=x;previous_index=i;previous_end=x['end']
+        elif i in fixed: raise ValueError('人工锚点与句段冲突，已保留人工点。')
+    if not anchors: raise ValueError('没有可靠发音锚点，不能对整句凭空分配时间。')
+    repaired=[];boundaries=[-1]+list(anchors)+[n]
+    for left,right in zip(boundaries,boundaries[1:]):
+        low=start if left<0 else anchors[left]['end'];high=end if right==n else anchors[right]['start']
+        count=right-left-1
+        if count and high<=low: raise ValueError('未识别单元没有可分配时间。')
+        for j in range(count):
+            idx=left+1+j;points[idx]={'id':units[idx]['id'],'start':low+(high-low)*j/count,'end':low+(high-low)*(j+1)/count};repaired.append(idx)
+    for i in range(n-1):
+        if i not in fixed: points[i]['end']=points[i+1]['start']
+    span=points[-1]['end']-points[0]['start']
+    review='AI识别失败，推荐人工审核' if span>0 and overlap/span>.05 else None
+    return points,review,repaired
+
 def run(args):
     import numpy as np
     import torch
@@ -68,9 +106,18 @@ def run(args):
         emit('正在定位整曲句段；已有人工时间点不参与推理…')
         coarse=align(audio,lines)
     results=[]
+    def infer(line,start,end):
+        if not 0<end-start<=35: raise ValueError('句段范围不可靠或超过35秒。')
+        first=round(start*sr);last=round(end*sr);start=first/sr;end=last/sr
+        raw=align(audio[first:last],[line])[line['id']]
+        for point in raw:
+            for key in ('start','end'):
+                if point[key] is not None: point[key]+=start
+        points,review,repaired=repair_units(raw,line['units'],start,end)
+        return {'id':line['id'],'units':points,'review':review,'interpolatedUnitIndices':repaired,'window':[start,end]}
     for i,line in enumerate(lines):
         if line.get('protected'):
-            results.append({'id':line['id'],'units':[],'error':'已有人工打点，已保留。'});continue
+            results.append({'id':line['id'],'units':[{'id':u['id'],'start':u['fixedStart'],'end':u['fixedEnd']} for u in line['units']], 'protected':True});continue
         emit(f"逐句对齐 {i+1}/{len(lines)}")
         try:
             if use_lrc:
@@ -78,24 +125,33 @@ def run(args):
                 ends=[t for t,_ in anchors if t>sung[i][0]]
                 end=min(duration,(min(ends) if ends else duration)+.25)
             else:
-                times=coarse[line['id']]
-                valid=[t for t in times if t['start'] is not None and t['end'] is not None and t['end']>t['start']]
-                if not valid: raise ValueError('未获得可靠句段位置，请提供匹配的 LRC 或手动打轴。')
-                start=max(0,min(t['start'] for t in valid)-.5);end=min(duration,max(t['end'] for t in valid)+.5)
-            if not 0<end-start<=35: raise ValueError('句段范围不可靠或超过35秒，已跳过；请检查歌词与音频版本。')
-            # Actual audio cropping, then local inference. Restore the original song clock afterwards.
-            first=round(start*sr);last=round(end*sr);start=first/sr
-            refined=align(audio[first:last],[line])[line['id']]
-            if len(refined)!=len(line['units']): raise ValueError('返回单元数量不匹配。')
-            previous=-1
-            for t in refined:
-                if t['start'] is None or t['end'] is None or not np.isfinite(t['start']) or not np.isfinite(t['end']) or not previous<=t['start']<t['end']<=(last-first)/sr+.001:
-                    raise ValueError('句内出现零时长、逆序或越界，请手动检查。')
-                previous=t['end'];t['start']=round(t['start']+start,6);t['end']=round(t['end']+start,6)
-            results.append({'id':line['id'],'units':refined,'window':[start,end],'positionSource':'lrc' if use_lrc else 'coarse-model'})
-        except Exception as e:
-            results.append({'id':line['id'],'units':[],'error':str(e)[:500]})
+                valid=[x for x in coarse[line['id']] if x['start'] is not None and x['end'] is not None and x['end']>x['start']]
+                if not valid: raise ValueError('未获得可靠句段位置。')
+                start=max(0,min(x['start'] for x in valid)-.5);end=min(duration,max(x['end'] for x in valid)+.5)
+            known=[u for u in line['units'] if u.get('fixedStart') is not None]
+            if known:
+                start=min(start,min(u['fixedStart'] for u in known))
+                end=max(end,max(u['fixedEnd'] for u in known))
+            results.append(infer(line,start,end))
+        except Exception as e: results.append({'id':line['id'],'units':[],'error':str(e)[:500]})
         pathlib.Path(args.output).write_text(json.dumps({'lines':results},ensure_ascii=False),encoding='utf-8')
+    # One bounded retry after the complete first pass; known neighbours include manual rows.
+    for i in range(1,len(lines)-1):
+        current=results[i];left=results[i-1];right=results[i+1]
+        if current.get('protected') or not left['units'] or not right['units']: continue
+        low=left['units'][-1]['end'];high=right['units'][0]['start']
+        conflict=not current['units'] or current['units'][0]['start']<low or current['units'][-1]['end']>high
+        if not conflict or not 0<high-low<=35: continue
+        emit(f"利用相邻句空档重试 {i+1}/{len(lines)}")
+        try:
+            retry=infer(lines[i],low,high)
+            if not retry['interpolatedUnitIndices'] and not retry.get('review'):
+                retry['positionSource']='neighbour-gap';results[i]=retry
+            elif not current['units']:
+                retry['review']='AI识别失败，推荐人工审核';results[i]=retry
+        except Exception as e:
+            current['retryError']=str(e)[:500] # Failed retry is not evidence of real overlapping vocals.
+    pathlib.Path(args.output).write_text(json.dumps({'lines':results},ensure_ascii=False),encoding='utf-8')
     emit('本地分段对齐完成')
 
 if __name__=='__main__':

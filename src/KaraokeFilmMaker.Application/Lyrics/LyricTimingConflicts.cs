@@ -10,7 +10,7 @@ public static class LyricTimingConflicts
         && line.Units.Count > 0 && line.Units.All(LyricRecordingProgress.IsCompleted);
 
     public static bool HasExplicitEnd(LyricLine line) => Recorded(line)
-        && line.ExplicitEndTime == line.Timing.End;
+        && (line.ExplicitEndTime == line.Timing.End || (line.AutoAlignmentEnd == line.Timing.End && line.Units.Any(u => u.IsAutoTimed)));
 
     public static string? EntryIssue(LyricDocument document, int lineIndex, ProjectTime start)
     {
