@@ -1,5 +1,7 @@
 # 莉拉OK! / Liraoke MVP 需求与技术架构基线
 
+2026-11-15 独立功能分支 `feature/lrc_pronuce_mapping`：支持本地带注音 TXT/LRC/SRT 与粘贴文本 `{原文||假名}`、逐字逗号分组、`[tool:utaten-ruby]` 兼容标记。明确注音保存为锁定的语言范围与指定读音，未注音范围继续原有分析；不抓取网站、不升级 schema、不将导入时间视为确认打点。格式不完整时拒绝替换，避免静默丢失。详见 [带注音歌词导入](ANNOTATED_LYRICS.md)。本分支暂不合并 master。
+
 > 文档版本：0.35
 >
 > 决策日期：2026-10-30（feature/ai-integration：Pi + Cordis 初版流式对话）

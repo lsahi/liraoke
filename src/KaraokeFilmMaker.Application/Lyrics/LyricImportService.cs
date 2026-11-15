@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using KaraokeFilmMaker.Domain.Lyrics;
 using KaraokeFilmMaker.Domain.Time;
 using KaraokeFilmMaker.Application.Japanese;
+using KaraokeFilmMaker.Application.Abstractions;
 
 namespace KaraokeFilmMaker.Application.Lyrics;
 
@@ -73,6 +74,8 @@ public sealed class LyricImportService
     {
         ArgumentNullException.ThrowIfNull(text);
         string normalizedExtension = extension.Trim().ToLowerInvariant();
+        bool marked = SplitLines(text).Any(line => line.Trim().TrimStart('\uFEFF') == AnnotatedLyricText.SourceMarker);
+        if (marked && normalizedExtension is ".txt" or "") { normalizedExtension = ".lrc"; }
 
         IReadOnlyList<ParsedLine> parsedLines = normalizedExtension switch
         {
@@ -83,7 +86,12 @@ public sealed class LyricImportService
         };
 
         var lines = parsedLines
-            .Select(line => CreateLine(line, language))
+            .Select((line, index) =>
+            {
+                try { return CreateLine(line, language); }
+                catch (FormatException error)
+                { throw new FormatException($"第 {index + 1} 句：{error.Message}", error); }
+            })
             .ToArray();
         return new LyricDocument(language, lines);
     }
@@ -100,12 +108,17 @@ public sealed class LyricImportService
     private static IReadOnlyList<ParsedLine> ParseLrc(string text)
     {
         List<(ProjectTime Start, string Text)> entries = [];
+        List<string> untimed = [];
+        bool annotated = AnnotatedLyricText.HasMarkup(text) || text.Contains(AnnotatedLyricText.SourceMarker, StringComparison.Ordinal);
 
         foreach (string sourceLine in SplitLines(text))
         {
             MatchCollection matches = LrcTimestamp.Matches(sourceLine);
             if (matches.Count == 0)
             {
+                string plain = sourceLine.Trim().TrimStart('\uFEFF');
+                if (annotated && plain.Length > 0 && !Regex.IsMatch(plain, @"^\[[A-Za-z][A-Za-z0-9_-]*:.*\]$"))
+                { untimed.Add(plain); }
                 continue;
             }
 
@@ -119,6 +132,13 @@ public sealed class LyricImportService
             {
                 entries.Add((ParseLrcTime(match), lyricText));
             }
+        }
+
+        if (untimed.Count > 0)
+        {
+            if (entries.Count > 0)
+            { throw new FormatException("带注音 LRC 同时包含有时间和无时间的歌词行；请补齐行时间，或移除全部时间后导入，避免遗漏歌词。"); }
+            return untimed.Select(line => new ParsedLine(line, ProjectTime.Zero, ProjectTime.Zero)).ToArray();
         }
 
         var ordered = entries.OrderBy(entry => entry.Start).ToArray();
@@ -174,8 +194,29 @@ public sealed class LyricImportService
 
     private static LyricLine CreateLine(ParsedLine parsed, LyricLanguage language)
     {
+        AnnotatedLyricText annotation = AnnotatedLyricText.Parse(parsed.Text);
+        parsed = parsed with { Text = annotation.Text };
         TimeRange lineTiming = new(parsed.Start, parsed.End);
         IReadOnlyList<LyricUnit> units = CreateUnits(parsed.Text, lineTiming, language);
+        if (annotation.Readings.Count > 0)
+        {
+            List<JapaneseToken> tokens = [];
+            int cursor = 0;
+            foreach (var span in annotation.Readings)
+            {
+                if (span.Range.Start > cursor) { AddToken(cursor, span.Range.Start - cursor, null); }
+                AddToken(span.Range.Start, span.Range.Length, span.ManualReading);
+                cursor = span.Range.EndExclusive;
+            }
+            if (cursor < parsed.Text.Length) { AddToken(cursor, parsed.Text.Length - cursor, null); }
+            units = JapaneseAnnotationService.BuildUnits(tokens, lineTiming);
+
+            void AddToken(int start, int length, string? reading)
+            {
+                string surface = parsed.Text.Substring(start, length);
+                tokens.Add(new(surface, reading ?? surface, KanaRomanizer.Romanize(reading ?? surface), start, length, reading is null));
+            }
+        }
         return new LyricLine(
             Guid.NewGuid(),
             parsed.Text,
@@ -185,7 +226,8 @@ public sealed class LyricImportService
             lineTiming,
             units,
             ReviewState.Unreviewed,
-            ReadingSource: null);
+            ReadingSource: null)
+        { LanguageSpans = annotation.Readings.Count > 0 ? annotation.Readings : null };
     }
 
     public static IReadOnlyList<LyricUnit> CreateUnits(

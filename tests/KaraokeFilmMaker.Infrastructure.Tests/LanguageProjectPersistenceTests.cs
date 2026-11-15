@@ -85,6 +85,32 @@ public sealed class LanguageProjectPersistenceTests : IDisposable
     public void NewProjectsUseAutomaticLanguageSelection() =>
         Assert.Equal(LyricLanguage.Auto, KaraokeProject.Create("Auto", DateTimeOffset.UtcNow).Lyrics.Language);
 
+    [Fact]
+    public async Task ImportedExplicitReadingsSurviveSaveReopenWithoutDictionary()
+    {
+        var parsed = new KaraokeFilmMaker.Application.Lyrics.LyricImportService()
+            .Parse("{夢幻||ゆめまぼろし}", ".txt", LyricLanguage.Auto);
+        var service = new KaraokeFilmMaker.Application.Languages.LanguageAnalysisService(
+            KaraokeFilmMaker.Application.Languages.LanguageRegistry.CreateBuiltIns(new NoReadingRequests()));
+        var lyrics = await service.AnalyzeDocumentAsync(parsed);
+        var project = KaraokeProject.Create("Annotated", DateTimeOffset.UtcNow) with { Lyrics = lyrics };
+        Directory.CreateDirectory(_root);
+        var repository = new JsonProjectRepository();
+        await repository.SaveAsync(_root, project);
+        var reopened = await repository.LoadAsync(_root);
+        var line = reopened.Lyrics.Lines[0];
+        Assert.Equal("夢幻", line.PrimaryText);
+        Assert.Equal("ゆめまぼろし", line.ReadingText);
+        Assert.Equal(JsonSerializer.Serialize(lyrics, JsonOptions), JsonSerializer.Serialize(reopened.Lyrics, JsonOptions));
+        Assert.Equal("ゆめまぼろし", (await service.AnalyzeDocumentAsync(reopened.Lyrics, force: true)).Lines[0].ReadingText);
+    }
+
+    private sealed class NoReadingRequests : KaraokeFilmMaker.Application.Abstractions.IJapaneseReadingService
+    {
+        public Task<IReadOnlyList<KaraokeFilmMaker.Application.Abstractions.JapaneseToken>> AnalyzeAsync(
+            string text, CancellationToken cancellationToken = default) => throw new InvalidOperationException("Explicit reading must be preserved.");
+    }
+
     private static KaraokeProject CreateProject(LyricLanguage language)
     {
         var timing = new TimeRange(ProjectTime.FromSeconds(2), ProjectTime.FromSeconds(5));
