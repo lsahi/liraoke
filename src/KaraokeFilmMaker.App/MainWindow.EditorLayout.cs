@@ -40,8 +40,8 @@ public partial class MainWindow
         ClipToolsPanel.Visibility = IsPreviewMode ? Visibility.Visible : Visibility.Collapsed;
         ProjectTimeline.Update(_workspace?.Project, _playback.Position);
         MonitorShortcutText.Text = IsRecordingMode
-            ? "空格：下一个字 / 单词 / 音节　退格：回退一单元　Enter：结束句并应用　P：播放 / 暂停"
-            : "空格：播放 / 暂停　← →：逐帧　J：回退 1 秒　K：暂停　L：播放";
+            ? "空格：下一个字 / 单词 / 音节　退格：回退一单元　Enter：结束句并应用　P：播放 / 暂停　← →：跳至相邻 5 秒刻度"
+            : "空格：播放 / 暂停　← →：跳至相邻 5 秒刻度　J：回退 1 秒　K：暂停　L：播放";
         TimelineModeText.Text = IsRecordingMode ? "歌词打轴 · 一次空格一个演唱单元" : "歌曲 · 视频 · 字幕";
         if (!IsRecordingMode)
         {
