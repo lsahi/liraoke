@@ -58,16 +58,14 @@ public class PracticeRoomWasapiPlaybackTests
                     Assert.Equal(Visibility.Visible, ((Image)room.FindName("Still")).Visibility);
                     var position = (Slider)room.FindName("PositionSlider");
                     position.Value = 1.4;
-                    room.GetType().GetMethod("Seek_KeyUp", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(room,
-                        [position, new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
-                            PresentationSource.FromVisual(room)!, 0, System.Windows.Input.Key.Right)]);
+                    position.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+                        { RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent });
                     await Until(() => ((MediaElement)room.FindName("Video")).Visibility == Visibility.Visible);
                     var media = (MediaElement)room.FindName("Video"); Assert.True(media.IsMuted);
                     Assert.InRange(media.Position.TotalSeconds, .25, .6);
                     position.Value = 2.2;
-                    room.GetType().GetMethod("Seek_KeyUp", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(room,
-                        [position, new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
-                            PresentationSource.FromVisual(room)!, 0, System.Windows.Input.Key.Right)]);
+                    position.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+                        { RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent });
                     await Until(() => media.Visibility == Visibility.Hidden);
                     ((Button)room.FindName("PlayButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await Until(() => ((TextBlock)room.FindName("TimeText")).Text.StartsWith("00:02"));

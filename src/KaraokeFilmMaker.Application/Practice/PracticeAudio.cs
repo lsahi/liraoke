@@ -2,7 +2,7 @@ using KaraokeFilmMaker.Domain.Time;
 
 namespace KaraokeFilmMaker.Application.Practice;
 
-public sealed record PracticeAudioDevice(string Id, string Name);
+public sealed record PracticeAudioDevice(string Id, string Name, Guid? Container = null, string? Parent = null, string Adapter = "", uint? FormFactor = null);
 
 /// <summary>A private, non-recording transport. Project time comes from rendered song audio.</summary>
 public interface IPracticeAudioSession : IAsyncDisposable

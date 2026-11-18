@@ -140,7 +140,7 @@
                                    Text="00:00.000" />
                         <TextBlock x:Name="MonitorShortcutText" Margin="0,6,0,0" TextWrapping="Wrap"
                                    Foreground="#C4CCD4" FontSize="12"
-                                   Text="空格：播放 / 暂停　← →：逐帧　J / K / L：后退 / 暂停 / 播放" />
+                                   Text="空格：播放 / 暂停　← →：跳至相邻 5 秒刻度　J / K / L：后退 / 暂停 / 播放" />
                     </StackPanel>
                 </Grid>
             </Border>

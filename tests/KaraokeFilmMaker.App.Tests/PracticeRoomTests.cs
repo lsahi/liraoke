@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +20,30 @@ namespace KaraokeFilmMaker.App.Tests;
 
 public class PracticeRoomTests
 {
+    [Fact]
+    public Task FocusedProgressSliderTracksTransportAndSeeksByFiveSecondGrid() => Sta(async () =>
+    {
+        var audio = new FakeAudio();
+        var room = Room(Project(), Path.GetTempPath(), audio, (_, _) => Task.FromResult("song.wav"));
+        try
+        {
+            room.Show();
+            await Until(() => Field<Button>(room, "PlayButton").IsEnabled);
+            var slider = Field<Slider>(room, "PositionSlider");
+            room.Activate();
+            Assert.True(slider.Focus());
+            await audio.SeekAsync(ProjectTime.FromSeconds(12.3));
+            await Until(() => slider.Value == 12.3);
+            foreach (var (key, expected) in new[] { (Key.Right, 15d), (Key.Left, 10d) })
+            {
+                slider.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(room), 0, key)
+                    { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+                await Until(() => slider.Value == expected);
+                Assert.Equal(expected, audio.Position.TotalSeconds);
+            }
+        }
+        finally { await room.CloseRoomAsync(); }
+    });
     [Theory]
     [InlineData(1280, 720)]
     [InlineData(960, 720)]
@@ -129,9 +154,63 @@ public class PracticeRoomTests
         finally { await room.CloseRoomAsync(); }
     });
 
+    [Theory]
+    [InlineData("IN (VT-3)", "OUT (VT-3)", true)]
+    [InlineData("1080P USB Camera-Audio", "耳机 (Realtek USB Audio)", false)]
+    [InlineData("IN (VT-3)", "耳机 (Realtek USB Audio)", false)]
+    public Task MonitorAdviceAndDecliningSoftwareReturn(string input, string output, bool known) => Sta(async () =>
+    {
+        var audio = new FakeAudio();
+        string? warning = null;
+        var room = new PracticeRoomWindow(Project(), Path.GetTempPath(), new Dictionary<Guid, string>(), null,
+            false, (_, _) => Task.FromResult("song.wav"), audio, [new("in", input)], [new("out", output)],
+            message => { warning = message; return false; });
+        try
+        {
+            room.Show();
+            await Until(() => Field<Button>(room, "PlayButton").IsEnabled);
+            Assert.Equal(known, Field<TextBlock>(room, "MonitorAdvice").Text.Contains("MIC IN"));
+            var monitor = Field<CheckBox>(room, "MonitorCheck");
+            monitor.IsChecked = true;
+            monitor.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+            Assert.Contains("延迟", warning);
+            Assert.False(monitor.IsChecked);
+            Assert.False(audio.IsMonitoring);
+            Field<Button>(room, "PlayButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Until(() => audio.IsPlaying);
+        }
+        finally { await room.CloseRoomAsync(); }
+    });
+
+    [Fact]
+    public Task RoutesPreferKnownHardwareAndExcludeDigitalAndConflictingDevices() => Sta(async () =>
+    {
+        var hardware = Guid.NewGuid();
+        var onboard = Guid.NewGuid();
+        var inputs = new PracticeAudioDevice[] { new("ri", "麦克风 (Realtek)", onboard, FormFactor: 4),
+            new("vi", "IN (VT-4)", hardware), new("ui", "USB Input", Parent: @"USB\OTHER") };
+        var outputs = new PracticeAudioDevice[] { new("ro", "耳机 (Realtek)", onboard, FormFactor: 3),
+            new("rd", "Realtek Digital Output", onboard, FormFactor: 8), new("wrong", "OUT (VT-4)", Guid.NewGuid()),
+            new("vo", "OUT (VT-4)", hardware), new("uo", "USB Output", Parent: @"USB\OTHER") };
+        var room = new PracticeRoomWindow(Project(), Path.GetTempPath(), new Dictionary<Guid, string>(), null,
+            false, (_, _) => Task.FromResult("song.wav"), new FakeAudio(), inputs, outputs);
+        try
+        {
+            room.Show(); await Until(() => Field<Button>(room, "PlayButton").IsEnabled);
+            var routes = Field<ComboBox>(room, "MonitorRoutes");
+            Assert.Equal(3, routes.Items.Count);
+            Assert.Contains("VT-4", routes.Text);
+            Assert.Equal(0, Field<ComboBox>(room, "OutputDevice").SelectedIndex);
+            Field<Button>(room, "UseRouteButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(outputs[3], Field<ComboBox>(room, "OutputDevice").SelectedItem);
+            Assert.False(Field<CheckBox>(room, "MonitorCheck").IsChecked);
+        }
+        finally { await room.CloseRoomAsync(); }
+    });
+
     private static PracticeRoomWindow Room(KaraokeProject project, string root, FakeAudio audio,
         Func<bool, CancellationToken, Task<string>> prepare) => new(project, root, new Dictionary<Guid, string>(), null, false,
-            prepare, audio, [], []);
+            prepare, audio, [], [], _ => true);
     private static KaraokeProject Project()
     {
         var asset = new MediaAsset(Guid.NewGuid(), "练习曲.wav", "song.wav", MediaKind.Audio, ProjectDuration.FromSeconds(60));

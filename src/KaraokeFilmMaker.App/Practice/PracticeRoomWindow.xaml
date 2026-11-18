@@ -32,7 +32,7 @@
    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <Button x:Name="PlayButton" Content="播放" Click="Play_Click" Padding="22,8" Margin="0,0,10,0" IsEnabled="False"/>
    <Slider x:Name="PositionSlider" Grid.Column="1" VerticalAlignment="Center" Minimum="0" Maximum="1"
-     IsEnabled="False" PreviewMouseLeftButtonDown="Seek_Begin" PreviewMouseLeftButtonUp="Seek_End" KeyUp="Seek_KeyUp"/>
+     IsEnabled="False" ToolTip="← → 跳至相邻 5 秒刻度" PreviewMouseLeftButtonUp="Seek_End"/>
    <TextBlock x:Name="TimeText" Grid.Column="2" Text="00:00 / 00:00" VerticalAlignment="Center" Margin="12,0,0,0"/>
   </Grid>
   <Border Grid.Row="3" Background="#F0F9FC" BorderBrush="#D4E8F0" BorderThickness="1" CornerRadius="8" Padding="12">
@@ -51,11 +51,16 @@
      <TextBlock Text="歌曲音量" VerticalAlignment="Center"/>
      <Slider x:Name="SongVolume" Grid.Column="1" Minimum="0" Maximum="1" Value="0.7" Margin="10,0,20,0" ValueChanged="Volume_Changed"/>
      <TextBlock Grid.Column="2" Text="麦克风音量" VerticalAlignment="Center"/>
-     <Slider x:Name="MicVolume" Grid.Column="3" Minimum="0" Maximum="1" Value="0.7" Margin="10,0,20,0" ValueChanged="Volume_Changed"/>
-     <CheckBox x:Name="MonitorCheck" Grid.Column="4" Content="开启监听" Click="Monitor_Click" VerticalAlignment="Center" Margin="0,0,14,0"/>
-     <CheckBox x:Name="MuteCheck" Grid.Column="5" Content="麦克风静音" Click="Volume_Changed" VerticalAlignment="Center"/>
+     <Slider IsEnabled="{Binding IsChecked, ElementName=MonitorCheck}" x:Name="MicVolume" Grid.Column="3" Minimum="0" Maximum="1" Value="0.7" Margin="10,0,20,0" ValueChanged="Volume_Changed"/>
+     <CheckBox x:Name="MonitorCheck" Grid.Column="4" Content="软件耳返" Click="Monitor_Click" VerticalAlignment="Center" Margin="0,0,14,0"/>
+     <CheckBox IsEnabled="{Binding IsChecked, ElementName=MonitorCheck}" x:Name="MuteCheck" Grid.Column="5" Content="麦克风静音" Click="Volume_Changed" VerticalAlignment="Center"/>
     </Grid>
-    <TextBlock Text="建议使用有线耳机监听；歌曲暂停时仍可试麦。选择设备或版本后点击“连接 / 应用”。" Foreground="#687782" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+    <DockPanel x:Name="RoutePanel" Visibility="Collapsed" Margin="0,8,0,0">
+     <TextBlock Text="硬件监听" VerticalAlignment="Center" Margin="0,0,8,0"/>
+     <Button x:Name="UseRouteButton" DockPanel.Dock="Right" Content="使用所选设备" Click="UseRoute_Click" Margin="8,0,0,0"/>
+     <ComboBox x:Name="MonitorRoutes" DisplayMemberPath="Display" SelectionChanged="Route_Changed"/>
+    </DockPanel>
+    <TextBlock x:Name="MonitorAdvice" Foreground="#687782" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
    </StackPanel>
   </Border>
   <TextBlock x:Name="Status" Grid.Row="4" Text="正在准备练歌房…" TextWrapping="Wrap" Margin="0,10,0,0" Foreground="#527086"/>

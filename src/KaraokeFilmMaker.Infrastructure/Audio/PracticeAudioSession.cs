@@ -28,7 +28,7 @@ public sealed class PracticeAudioSession : IPracticeAudioSession
         var devices = new List<PracticeAudioDevice>();
         foreach (var device in enumerator.EnumerateAudioEndPoints(input ? DataFlow.Capture : DataFlow.Render, DeviceState.Active))
         {
-            using (device) devices.Add(new(device.ID, device.FriendlyName));
+            using (device) devices.Add(PracticeEndpointIdentity.Read(device));
         }
         return devices;
     }

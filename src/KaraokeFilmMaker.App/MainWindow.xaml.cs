@@ -416,21 +416,28 @@ public partial class MainWindow : Window
         EditorShortcut action = EditorShortcutPolicy.Resolve(e.Key, IsRecordingMode);
         if (action == EditorShortcut.None) { return; }
         e.Handled = true;
-        if (e.IsRepeat && action is not (EditorShortcut.PreviousFrame or EditorShortcut.NextFrame)) { return; }
+        if (e.IsRepeat && action is not (EditorShortcut.PreviousFiveSeconds or EditorShortcut.NextFiveSeconds)) { return; }
         if (action is EditorShortcut.TogglePlayback or EditorShortcut.Play or EditorShortcut.Pause)
         {
             if (action == EditorShortcut.TogglePlayback || action == EditorShortcut.Play && !_playback.IsPlaying
                 || action == EditorShortcut.Pause && _playback.IsPlaying) { await TogglePlaybackAsync(); }
         }
-        else if (action is EditorShortcut.PreviousFrame or EditorShortcut.NextFrame or EditorShortcut.SeekBack or EditorShortcut.Start or EditorShortcut.End)
+        else if (action is EditorShortcut.PreviousFiveSeconds or EditorShortcut.NextFiveSeconds or EditorShortcut.SeekBack or EditorShortcut.Start or EditorShortcut.End)
         {
             await RunUiOperationAsync(async () =>
             {
-                double step = IsRecordingMode ? 0.1 : 1d / (_workspace?.Project.ExportPreset.FramesPerSecond ?? 30);
-                double seconds = Math.Clamp(_playback.Position.TotalSeconds
-                    + (action == EditorShortcut.SeekBack ? -1 : action == EditorShortcut.PreviousFrame ? -step : step), 0, _playback.Duration.TotalSeconds);
-                if (action == EditorShortcut.Start) { seconds = IsPreviewMode ? _workspace?.Project.GetWorkArea().Start.TotalSeconds ?? 0 : 0; }
-                if (action == EditorShortcut.End) { seconds = IsPreviewMode ? _workspace?.Project.GetWorkArea().End.TotalSeconds ?? _playback.Duration.TotalSeconds : _playback.Duration.TotalSeconds; }
+                var area = IsPreviewMode ? _workspace?.Project.WorkArea : null;
+                double duration = _playback.Duration.TotalSeconds;
+                double position = _playback.Position.TotalSeconds;
+                double seconds = action switch
+                {
+                    EditorShortcut.Start => area?.Start.TotalSeconds ?? 0,
+                    EditorShortcut.End => area?.End.TotalSeconds ?? duration,
+                    EditorShortcut.SeekBack => Math.Clamp(position - 1, 0, duration),
+                    _ => EditorShortcutPolicy.FiveSecondTarget(position, action == EditorShortcut.NextFiveSeconds,
+                        _playback.IsPlaying ? area?.Start.TotalSeconds ?? 0 : 0,
+                        _playback.IsPlaying ? area?.End.TotalSeconds ?? duration : duration)
+                };
                 await _playback.SeekAsync(ProjectTime.FromSeconds(seconds));
             });
         }

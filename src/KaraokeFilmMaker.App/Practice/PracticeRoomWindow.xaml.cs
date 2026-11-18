@@ -1,3 +1,4 @@
+using KaraokeFilmMaker.App.Controls;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -28,9 +29,10 @@ public partial class PracticeRoomWindow : Window
     private readonly Func<bool, CancellationToken, Task<string>> _prepare;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(33) };
+    private readonly Func<string, bool> _confirmSoftwareMonitor;
     private Task _operation = Task.CompletedTask;
     private Task? _closing;
-    private bool _busy, _ready, _seeking, _allowClose, _videoReady;
+    private bool _busy, _ready, _allowClose, _videoReady;
     private bool _videoPlaying;
     private TimeSpan? _lastVideoSeek;
     private Guid? _clipId;
@@ -40,20 +42,34 @@ public partial class PracticeRoomWindow : Window
         AudioVisualizationData? visualization, bool accompaniment,
         Func<bool, CancellationToken, Task<string>> prepare,
         IPracticeAudioSession? audio = null,
-        IReadOnlyList<PracticeAudioDevice>? inputs = null, IReadOnlyList<PracticeAudioDevice>? outputs = null)
+        IReadOnlyList<PracticeAudioDevice>? inputs = null, IReadOnlyList<PracticeAudioDevice>? outputs = null,
+        Func<string, bool>? confirmSoftwareMonitor = null)
     {
         _project = project; _root = root; _previews = new Dictionary<Guid, string>(previews);
         _visualization = visualization; _prepare = prepare;
         _audio = audio ?? new PracticeAudioSession();
         InitializeComponent();
+        _confirmSoftwareMonitor = confirmSoftwareMonitor ?? (message => MessageBox.Show(this, message,
+            "开启软件耳返？", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes);
+        MonitorAdvice.Text = PracticeMonitorAdvice.Unknown;
         SongTitle.Text = project.Title;
         Stage.Width = 960; Stage.Height = 960d * project.ExportPreset.Height / project.ExportPreset.Width;
         AccompanimentItem.IsEnabled = project.GetAccompaniment(project.MasterAudioAssetId) is not null;
         VersionCombo.SelectedIndex = accompaniment && AccompanimentItem.IsEnabled ? 1 : 0;
         try
         {
-            InputDevice.ItemsSource = new[] { new PracticeAudioDevice("", "系统默认麦克风") }.Concat(inputs ?? PracticeAudioSession.GetDevices(true)).ToArray();
-            OutputDevice.ItemsSource = new[] { new PracticeAudioDevice("", "系统默认输出") }.Concat(outputs ?? PracticeAudioSession.GetDevices(false)).ToArray();
+            var microphones = inputs ?? PracticeAudioSession.GetDevices(true);
+            var speakers = outputs ?? PracticeAudioSession.GetDevices(false);
+            var routes = PracticeMonitorAdvice.Find(microphones, speakers);
+            MonitorRoutes.ItemsSource = routes;
+            if (routes.Length > 0)
+            {
+                MonitorRoutes.SelectedIndex = 0;
+                RoutePanel.Visibility = Visibility.Visible;
+            }
+            InputDevice.ItemsSource = new[] { new PracticeAudioDevice("", "系统默认麦克风") }.Concat(microphones).ToArray();
+            OutputDevice.ItemsSource = new[] { new PracticeAudioDevice("", "系统默认输出") }.Concat(speakers).ToArray();
             InputDevice.SelectedIndex = OutputDevice.SelectedIndex = 0;
         }
         catch (Exception error) { Status.Text = "无法枚举设备，可尝试连接系统默认设备：" + error.Message; }
@@ -61,6 +77,20 @@ public partial class PracticeRoomWindow : Window
         PositionSlider.Maximum = Math.Max(PositionSlider.Minimum + 0.001, project.GetWorkArea().End.TotalSeconds);
         _timer.Tick += Timer_Tick;
         Draw(project.GetWorkArea().Start);
+    }
+
+    private void Route_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (MonitorRoutes.SelectedItem is PracticeMonitorRoute route)
+            MonitorAdvice.Text = route.Advice + " 请关闭 Windows“侦听此设备”和软件耳返，在耳机中试听人声与伴奏。";
+    }
+
+    private async void UseRoute_Click(object sender, RoutedEventArgs e)
+    {
+        if (MonitorRoutes.SelectedItem is not PracticeMonitorRoute route) return;
+        InputDevice.SelectedItem = route.Input;
+        OutputDevice.SelectedItem = route.Output;
+        await RunAsync(ConnectAsync);
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) { _timer.Start(); await RunAsync(ConnectAsync); }
@@ -79,7 +109,7 @@ public partial class PracticeRoomWindow : Window
         await _audio.SeekAsync(position);
         _ready = true;
         ApplyVolume();
-        Status.Text = "已连接。播放歌曲后可开启麦克风监听；关闭窗口释放设备。";
+        Status.Text = "已连接。更改播放设备或版本后，请点击“连接 / 应用”。";
         Draw(position);
     }
     private async void Play_Click(object sender, RoutedEventArgs e) => await RunAsync(ToggleAsync);
@@ -92,6 +122,12 @@ public partial class PracticeRoomWindow : Window
     private async void Monitor_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         if (!_ready) { MonitorCheck.IsChecked = false; return; }
+        if (MonitorCheck.IsChecked == true && !_confirmSoftwareMonitor(MonitorAdvice.Text +
+            "\n\n软件耳返会增加延迟，唱歌时不推荐。仍要开启吗？"))
+        {
+            MonitorCheck.IsChecked = false;
+            return;
+        }
         try { await _audio.SetMonitoringAsync(DeviceId(InputDevice), MonitorCheck.IsChecked == true); }
         finally { MonitorCheck.IsChecked = _audio.IsMonitoring; ApplyVolume(); }
         Status.Text = _audio.IsMonitoring ? "麦克风监听已开启，不保存录音。" : "麦克风监听已关闭，设备已释放。";
@@ -103,20 +139,39 @@ public partial class PracticeRoomWindow : Window
         _audio.MicrophoneVolume = (float)MicVolume.Value;
         _audio.MicrophoneMuted = MuteCheck.IsChecked == true || MonitorCheck.IsChecked != true;
     }
-    private void Seek_Begin(object sender, MouseButtonEventArgs e) => _seeking = true;
+
     private async void Seek_End(object sender, MouseButtonEventArgs e)
     {
         double target = PositionSlider.Value;
-        _seeking = false;
+
         await RunAsync(() => _audio.SeekAsync(ProjectTime.FromSeconds(target)));
-    }
-    private async void Seek_KeyUp(object sender, KeyEventArgs e)
-    {
-        if (e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.PageDown or Key.PageUp)
-            await RunAsync(() => _audio.SeekAsync(ProjectTime.FromSeconds(PositionSlider.Value)));
     }
     private async void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        if (_ready && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            var area = _project.GetWorkArea();
+            double start = area.Start.TotalSeconds, end = area.End.TotalSeconds;
+            bool editing = InputDevice.IsKeyboardFocusWithin || OutputDevice.IsKeyboardFocusWithin ||
+                VersionCombo.IsKeyboardFocusWithin || MonitorRoutes.IsKeyboardFocusWithin ||
+                MicVolume.IsKeyboardFocusWithin || SongVolume.IsKeyboardFocusWithin;
+            double position = _audio.Position.TotalSeconds;
+            double? target = e.Key switch
+            {
+                Key.Left or Key.Right when !editing => EditorShortcutPolicy.FiveSecondTarget(position, e.Key == Key.Right, start, end),
+                Key.Home when PositionSlider.IsKeyboardFocusWithin => start,
+                Key.End when PositionSlider.IsKeyboardFocusWithin => end,
+                Key.PageUp when PositionSlider.IsKeyboardFocusWithin => Math.Min(end, position + PositionSlider.LargeChange),
+                Key.PageDown when PositionSlider.IsKeyboardFocusWithin => Math.Max(start, position - PositionSlider.LargeChange),
+                _ => null
+            };
+            if (target.HasValue)
+            {
+                e.Handled = true;
+                await RunAsync(() => _audio.SeekAsync(ProjectTime.FromSeconds(target.Value)));
+                return;
+            }
+        }
         if (e.Key == Key.Space && e.OriginalSource is not (TextBox or ComboBox or Slider or Button or CheckBox))
         { e.Handled = true; await RunAsync(ToggleAsync); }
     }
@@ -165,7 +220,7 @@ public partial class PracticeRoomWindow : Window
     {
         Subtitles.Update(_project, position);
         Visualization.Update(_project.AudioVisualizationEnabled ? _visualization : null, position, _project.AudioVisualizationStyle);
-        if (!_seeking && !PositionSlider.IsKeyboardFocusWithin) PositionSlider.Value = position.TotalSeconds;
+        if (!PositionSlider.IsMouseCaptureWithin) PositionSlider.Value = position.TotalSeconds;
         TimeText.Text = $"{TimeSpan.FromSeconds(position.TotalSeconds):mm\\:ss} / {TimeSpan.FromSeconds(_project.GetWorkArea().End.TotalSeconds):mm\\:ss}";
         PlayButton.Content = _ready && _audio.IsPlaying ? "暂停" : "播放";
         VideoClip? clip = VideoTimelineService.VisibleClipAt(_project, position);
