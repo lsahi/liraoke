@@ -42,7 +42,7 @@ public class AccompanimentWasapiPlaybackTests
                     var playback = (IAudioPlaybackSession)Field("_playback").GetValue(window)!;
                     string originalPath = playback.SourcePath!;
                     await playback.SeekAsync(ProjectTime.FromSeconds(1));
-                    var toggle = (CheckBox)window.FindName("AccompanimentPreviewCheck");
+                    var toggle = (RadioButton)window.FindName("AccompanimentPreviewCheck");
                     toggle.IsChecked = true; Call(window, "AccompanimentPreview_Click", toggle, new RoutedEventArgs());
                     await Idle(window);
                     string accompanimentPath = playback.SourcePath!;

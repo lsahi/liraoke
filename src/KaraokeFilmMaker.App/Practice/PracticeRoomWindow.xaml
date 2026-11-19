@@ -15,7 +15,7 @@
   </Grid.RowDefinitions>
   <StackPanel Margin="0,0,0,12">
    <TextBlock x:Name="SongTitle" FontSize="21" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-   <TextBlock Text="练歌房 · 当前项目的播放副本 · 不保存录音" Foreground="#687782" Margin="0,4,0,0"/>
+   <TextBlock Text="练歌房 · 单次完整演唱" Foreground="#687782" Margin="0,4,0,0"/>
   </StackPanel>
   <Border Grid.Row="1" Background="#111820" CornerRadius="10" Padding="6">
    <Viewbox Stretch="Uniform">
@@ -37,6 +37,8 @@
   </Grid>
   <Border Grid.Row="3" Background="#F0F9FC" BorderBrush="#D4E8F0" BorderThickness="1" CornerRadius="8" Padding="12">
    <StackPanel x:Name="SettingsPanel">
+    <TabControl>
+     <TabItem Header="录歌"><StackPanel Margin="8">
     <Grid>
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <StackPanel Margin="0,0,12,0"><TextBlock Text="麦克风"/><ComboBox x:Name="InputDevice" DisplayMemberPath="Name" Margin="0,5,0,0"/></StackPanel>
@@ -50,7 +52,7 @@
      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <TextBlock Text="歌曲音量" VerticalAlignment="Center"/>
      <Slider x:Name="SongVolume" Grid.Column="1" Minimum="0" Maximum="1" Value="0.7" Margin="10,0,20,0" ValueChanged="Volume_Changed"/>
-     <TextBlock Grid.Column="2" Text="麦克风音量" VerticalAlignment="Center"/>
+     <TextBlock Grid.Column="2" Text="耳返音量" VerticalAlignment="Center"/>
      <Slider IsEnabled="{Binding IsChecked, ElementName=MonitorCheck}" x:Name="MicVolume" Grid.Column="3" Minimum="0" Maximum="1" Value="0.7" Margin="10,0,20,0" ValueChanged="Volume_Changed"/>
      <CheckBox x:Name="MonitorCheck" Grid.Column="4" Content="软件耳返" Click="Monitor_Click" VerticalAlignment="Center" Margin="0,0,14,0"/>
      <CheckBox IsEnabled="{Binding IsChecked, ElementName=MonitorCheck}" x:Name="MuteCheck" Grid.Column="5" Content="麦克风静音" Click="Volume_Changed" VerticalAlignment="Center"/>
@@ -61,6 +63,32 @@
      <ComboBox x:Name="MonitorRoutes" DisplayMemberPath="Display" SelectionChanged="Route_Changed"/>
     </DockPanel>
     <TextBlock x:Name="MonitorAdvice" Foreground="#687782" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+    <WrapPanel Margin="0,8,0,0">
+     <Button x:Name="RecordButton" Content="开始录歌" Click="Record_Click"/>
+    </WrapPanel>
+    </StackPanel></TabItem>
+    <TabItem x:Name="MixTab" Header="翻唱混音"><StackPanel Margin="8">
+     <WrapPanel Margin="0,0,0,8">
+      <TextBlock Text="人声对齐" VerticalAlignment="Center" Width="76"/>
+      <Button Content="人声提前" Click="Earlier_Click"/>
+      <Button Content="恢复默认" Click="ResetOffset_Click"/>
+      <Button Content="人声滞后" Click="Later_Click"/>
+     </WrapPanel>
+     <WrapPanel Margin="0,0,0,8">
+      <TextBlock Text="人声音量" VerticalAlignment="Center" Width="76"/>
+      <Slider x:Name="VocalGain" Width="160" Minimum="-30" Maximum="30" Value="0" VerticalAlignment="Center"
+              AutomationProperties.Name="翻唱人声增益"/>
+      <TextBlock Width="72" VerticalAlignment="Center" Text="{Binding Value, ElementName=VocalGain, StringFormat={}{0:F1} dB}" Margin="8,0"/>
+      <Button Content="试唱调音" Click="Calibrate_Click"/>
+      <ProgressBar x:Name="MicLevel" Width="90" Height="10" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" AutomationProperties.Name="试唱输入电平"/>
+     </WrapPanel>
+     <WrapPanel>
+     <Button x:Name="BackingButton" Content="制作伴奏" Click="Backing_Click"/>
+     <Button x:Name="ReviewButton" Content="试听翻唱" IsEnabled="False" Click="Review_Click"/>
+     <Button x:Name="SaveTakeButton" Content="保存翻唱" IsEnabled="False" Click="SaveTake_Click"/>
+    </WrapPanel>
+    </StackPanel></TabItem>
+    </TabControl>
    </StackPanel>
   </Border>
   <TextBlock x:Name="Status" Grid.Row="4" Text="正在准备练歌房…" TextWrapping="Wrap" Margin="0,10,0,0" Foreground="#527086"/>

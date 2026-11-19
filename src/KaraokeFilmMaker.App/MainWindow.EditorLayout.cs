@@ -19,7 +19,7 @@ public partial class MainWindow
         if (EditorTabs.SelectedItem != LyricSourceTab && !CanLeaveSourceLyricEdit())
         { EditorTabs.SelectedItem = LyricSourceTab; return; }
         UpdateEditorMode();
-        if (_previewAccompaniment && _playback.IsLoaded && !_isBusy)
+        if ((_previewAccompaniment || _previewCover) && _playback.IsLoaded && !_isBusy)
             await RunUiOperationAsync(() => PrepareProjectPlaybackAsync());
     }
 

@@ -29,7 +29,11 @@ public partial class MainWindow
             string root = _workspace.RootPath;
             var room = new PracticeRoomWindow(project, root, _previewPaths, _audioVisualizationData,
                 UsePreviewAccompaniment, (accompaniment, cancellation) => new ProjectAudioComposer(_mediaTools)
-                    .PrepareAsync(root, project, cancellationToken: cancellation, accompaniment: accompaniment)) { Owner = this };
+                    .PrepareAsync(root, _workspace.Project, cancellationToken: cancellation, accompaniment: accompaniment)) { Owner = this };
+            room.MakeBacking = async () => { await MakeBackingAsync(true); return HasCurrentAccompaniment; };
+            room.BackingPath = () => _workspace?.Project.GetAccompaniment(project.MasterAudioAssetId) is { } backing
+                ? Infrastructure.Separation.AccompanimentStore.Resolve(root, backing) : null;
+            room.CoverSaved = RefreshAccompanimentState;
             _practiceRoom = room;
             room.Closed += (_, _) => { if (ReferenceEquals(_practiceRoom, room)) _practiceRoom = null; };
             room.Show();

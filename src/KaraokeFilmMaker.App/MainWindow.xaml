@@ -173,27 +173,11 @@
                       <Button x:Name="InspectorMakeAccompanimentButton" Content="生成伴奏" Click="VocalSeparation_Click"
                               IsEnabled="{Binding IsEnabled, ElementName=MakeAccompanimentButton}"
                               ToolTip="{Binding ToolTip, ElementName=MakeAccompanimentButton}" />
-                <CheckBox x:Name="AccompanimentPreviewCheck" Content="伴奏" Margin="8,20" VerticalAlignment="Top"
-                          IsEnabled="False" Click="AccompanimentPreview_Click" ToolTipService.ShowOnDisabled="True"
-                          AutomationProperties.Name="预览伴奏开关">
-                  <CheckBox.Template><ControlTemplate TargetType="CheckBox">
-                    <StackPanel Orientation="Horizontal" Background="Transparent">
-                      <Grid Width="46" Height="26" Margin="0,0,12,0">
-                        <Border x:Name="Track" Background="#DAE3E8" CornerRadius="13" />
-                        <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="White" Margin="3" HorizontalAlignment="Left" />
-                      </Grid>
-                      <TextBlock x:Name="SwitchLabel" Text="伴奏 · 关" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <ControlTemplate.Triggers>
-                      <Trigger Property="IsChecked" Value="True">
-                        <Setter TargetName="Track" Property="Background" Value="#80C8E6" />
-                        <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
-                        <Setter TargetName="SwitchLabel" Property="Text" Value="伴奏 · 开" />
-                      </Trigger>
-                      <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
-                    </ControlTemplate.Triggers>
-                  </ControlTemplate></CheckBox.Template>
-                </CheckBox>
+                <WrapPanel Margin="0,8">
+                  <RadioButton x:Name="OriginalPreview" Content="原唱" Click="AccompanimentPreview_Click" Margin="4"/>
+                  <RadioButton x:Name="AccompanimentPreviewCheck" Content="伴奏" Click="AccompanimentPreview_Click" Margin="4"/>
+                  <RadioButton x:Name="CoverPreview" Content="翻唱" Click="AccompanimentPreview_Click" Margin="4"/>
+                </WrapPanel>
 
                     </StackPanel>
                   </Border>

@@ -7,6 +7,8 @@ namespace KaraokeFilmMaker.App;
 public partial class MainWindow
 {
     private bool _previewAccompaniment;
+    private bool _previewCover;
+    private string? CoverPath => _workspace?.Project.MasterAudioAssetId is Guid id ? Infrastructure.Audio.PracticeCover.PathFor(_workspace.RootPath,id) : null;
     private Guid? _accompanimentProjectId;
     private Guid? _accompanimentSourceId;
 
@@ -19,11 +21,15 @@ public partial class MainWindow
     {
         if (AccompanimentPreviewCheck is null) return;
         if (_accompanimentProjectId != _workspace?.Project.Id || _accompanimentSourceId != _workspace?.Project.MasterAudioAssetId)
-            _previewAccompaniment = false;
+            _previewCover = _previewAccompaniment = false;
         _accompanimentProjectId = _workspace?.Project.Id;
         _accompanimentSourceId = _workspace?.Project.MasterAudioAssetId;
         bool available = HasCurrentAccompaniment;
         if (!available) _previewAccompaniment = false;
+        if (!File.Exists(CoverPath)) _previewCover = false;
+        CoverPreview.IsEnabled = File.Exists(CoverPath) && !_isBusy;
+        CoverPreview.IsChecked = _previewCover;
+        OriginalPreview.IsChecked = !_previewCover && !_previewAccompaniment;
         AccompanimentPreviewCheck.IsChecked = _previewAccompaniment;
         AccompanimentPreviewCheck.IsEnabled = available && !_isBusy;
         AccompanimentPreviewCheck.ToolTip = available ? "仅切换预览声音；打轴使用原歌曲，导出单独选择版本。"
@@ -35,20 +41,24 @@ public partial class MainWindow
 
     private async void AccompanimentPreview_Click(object sender, RoutedEventArgs e)
     {
-        if (_isBusy || !HasCurrentAccompaniment) { RefreshAccompanimentState(); return; }
+        if (_isBusy) { RefreshAccompanimentState(); return; }
+        bool cover = CoverPreview.IsChecked == true, previousCover = _previewCover;
         bool previous = _previewAccompaniment;
         bool requested = AccompanimentPreviewCheck.IsChecked == true;
         await RunUiOperationAsync(async () =>
         {
             _previewAccompaniment = requested;
+            _previewCover = cover;
             try { await PrepareProjectPlaybackAsync(); }
-            catch { _previewAccompaniment = previous; _preparedPlaybackKey = null; throw; }
-            StatusText.Text = _previewAccompaniment ? "预览已切换为伴奏；打轴与导出选择不变。" : "预览已切换为原唱。";
+            catch { _previewCover = previousCover; _previewAccompaniment = previous; _preparedPlaybackKey = null; throw; }
+            StatusText.Text = cover ? "预览已切换为翻唱。" : requested ? "预览已切换为伴奏。" : "预览已切换为原唱。";
         });
         RefreshAccompanimentState();
     }
 
-    private async void VocalSeparation_Click(object sender, RoutedEventArgs e)
+    private async void VocalSeparation_Click(object sender, RoutedEventArgs e) => await MakeBackingAsync(false);
+
+    private async Task MakeBackingAsync(bool fromRoom)
     {
         if (_workspace is null || _isBusy) { StatusText.Text = "请先打开工作区并导入歌曲。"; return; }
         if (!CanLeaveSourceLyricEdit() || !CanLeaveQuickEdit()) return;
@@ -65,7 +75,7 @@ public partial class MainWindow
         var window = new VocalSeparationWindow(Path.Combine(_workspace.RootPath, source.RelativePath), source.DisplayName,
             Path.Combine(_workspace.RootPath, "cache", "separation"), _mediaTools) { Owner = this };
         if (window.ShowDialog() != true || window.GeneratedPath is not { } generated) return;
-        await RunUiOperationAsync(async () =>
+        await RunEditorOperationAsync(async () =>
         {
             var project = await new AccompanimentStore(_mediaTools).RegisterAsync(_workspace.RootPath,
                 _workspace.Project, source.Id, generated, _operationCancellation!.Token);
@@ -75,6 +85,6 @@ public partial class MainWindow
             // Registered copies remain on disk for undo. Only discard this task's temporary result.
             try { File.Delete(generated); } catch (IOException) { }
             StatusText.Text = "伴奏已关联到当前歌曲。可在预览右侧“伴奏”页开启试听；请保存工程以保留关联。";
-        });
+        }, allowSourceDraft: false, keepPracticeRoom: fromRoom);
     }
 }

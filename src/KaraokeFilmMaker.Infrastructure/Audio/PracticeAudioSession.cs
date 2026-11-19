@@ -107,6 +107,25 @@ public sealed class PracticeAudioSession : IPracticeAudioSession
         finally { _gate.Release(); }
     }
 
+    private readonly object _takeLock = new();
+    private WaveFileWriter? _takeWriter;
+
+    public void StartTake(string path)
+    {
+        lock (_takeLock)
+            _takeWriter = new WaveFileWriter(path, _capture?.WaveFormat ?? throw new InvalidOperationException("麦克风未连接。"));
+    }
+
+    public void EndTake()
+    {
+        lock (_takeLock)
+        {
+            var writer = _takeWriter;
+            _takeWriter = null;
+            writer?.Dispose();
+        }
+    }
+
     private void StartCapture()
     {
         var builder = new WasapiRecorderBuilder().WithDevice(_inputDevice!).WithSharedMode()
@@ -121,8 +140,13 @@ public sealed class PracticeAudioSession : IPracticeAudioSession
         _microphone = source.WaveFormat.SampleRate == 48000 ? source : new WdlResamplingSampleProvider(source, 48000);
         _capture.DataAvailable += (data, flags, devicePosition, qpcPosition) =>
         {
-            if ((flags & AudioClientBufferFlags.Silent) != 0) buffer.Add(new byte[data.Length]);
-            else buffer.Add(data);
+            ReadOnlySpan<byte> samples = (flags & AudioClientBufferFlags.Silent) != 0 ? new byte[data.Length] : data;
+            buffer.Add(samples);
+            lock (_takeLock)
+            {
+                try { _takeWriter?.Write(samples); }
+                catch (IOException error) { Volatile.Write(ref _deviceError, "录音写入失败：" + error.Message); }
+            }
         };
         _capture.RecordingStopped += CaptureStopped;
         _capture.StartRecording();
@@ -205,6 +229,7 @@ public sealed class PracticeAudioSession : IPracticeAudioSession
             _capture.RecordingStopped -= CaptureStopped;
             await _capture.DisposeAsync(); _capture = null;
         }
+        EndTake();
         _monitor?.Clear(); _monitor = null; _microphone = null;
     }
     private async Task ReleaseAsync()

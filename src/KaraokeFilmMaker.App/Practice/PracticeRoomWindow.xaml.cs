@@ -98,6 +98,7 @@ public partial class PracticeRoomWindow : Window
     private static string? DeviceId(ComboBox combo) => combo.SelectedItem is PracticeAudioDevice { Id.Length: > 0 } device ? device.Id : null;
     private async Task ConnectAsync()
     {
+        _reviewing = false;
         ProjectTime position = _ready ? _audio.Position : _project.GetWorkArea().Start;
         _ready = false;
         await _audio.DisconnectAsync();
@@ -130,7 +131,7 @@ public partial class PracticeRoomWindow : Window
         }
         try { await _audio.SetMonitoringAsync(DeviceId(InputDevice), MonitorCheck.IsChecked == true); }
         finally { MonitorCheck.IsChecked = _audio.IsMonitoring; ApplyVolume(); }
-        Status.Text = _audio.IsMonitoring ? "麦克风监听已开启，不保存录音。" : "麦克风监听已关闭，设备已释放。";
+        Status.Text = _audio.IsMonitoring ? "软件耳返已开启。点击“开始录歌”才会录制。" : "软件耳返已关闭。";
     });
     private void Volume_Changed(object sender, RoutedEventArgs e) { if (IsInitialized) ApplyVolume(); }
     private void ApplyVolume()
@@ -148,6 +149,7 @@ public partial class PracticeRoomWindow : Window
     }
     private async void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        if (_recording || VocalGain.IsKeyboardFocusWithin) return;
         if (_ready && Keyboard.Modifiers == ModifierKeys.None)
         {
             var area = _project.GetWorkArea();
@@ -194,6 +196,7 @@ public partial class PracticeRoomWindow : Window
             {
                 SettingsPanel.IsEnabled = true; PlayButton.IsEnabled = PositionSlider.IsEnabled = _ready;
                 PlayButton.Content = _audio.IsPlaying ? "暂停" : "播放";
+                UpdateTakeControls();
             }
         }
     }
@@ -202,12 +205,14 @@ public partial class PracticeRoomWindow : Window
         if (_busy || !_ready || _lifetime.IsCancellationRequested) return;
         if (_audio.DeviceError is { } deviceError)
         {
+            _recording = false;
             _ready = false; MonitorCheck.IsChecked = false; Video.Pause();
             PlayButton.IsEnabled = PositionSlider.IsEnabled = false;
             Status.Text = deviceError;
             await RunAsync(() => _audio.DisconnectAsync());
             return;
         }
+        if (_recording && !_audio.IsPlaying) { await RunAsync(FinishTakeAsync); return; }
         try { Draw(_audio.Position); }
         catch (Exception error)
         {
@@ -268,7 +273,7 @@ public partial class PracticeRoomWindow : Window
         await Dispatcher.Yield(DispatcherPriority.Background);
         await _operation;
         try { await _audio.DisposeAsync(); }
-        finally { _allowClose = true; if (IsVisible) Close(); }
+        finally { CleanDraft(); _allowClose = true; if (IsVisible) Close(); }
     }
     private async void Window_Closing(object? sender, CancelEventArgs e)
     { if (!_allowClose) { e.Cancel = true; await CloseRoomAsync(); } }

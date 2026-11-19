@@ -717,7 +717,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task RunUiOperationAsync(Func<Task> operation, bool allowSourceDraft = false)
+    private Task RunUiOperationAsync(Func<Task> operation, bool allowSourceDraft = false) =>
+        RunEditorOperationAsync(operation, allowSourceDraft, false);
+
+    private async Task RunEditorOperationAsync(Func<Task> operation, bool allowSourceDraft, bool keepPracticeRoom)
     {
         if (_isBusy || _openingPracticeRoom || (!allowSourceDraft && !CanLeaveSourceLyricEdit()))
         {
@@ -728,7 +731,7 @@ public partial class MainWindow : Window
         try
         {
             _isBusy = true;
-            await ClosePracticeRoomAsync();
+            if (!keepPracticeRoom) await ClosePracticeRoomAsync();
             RefreshAccompanimentState();
             RefreshWorkAreaAvailability();
             RefreshExportFormatAvailability();

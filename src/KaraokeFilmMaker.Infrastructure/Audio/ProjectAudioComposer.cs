@@ -14,7 +14,7 @@ namespace KaraokeFilmMaker.Infrastructure.Audio;
 public sealed class ProjectAudioComposer(MediaToolchain tools)
 {
     public async Task<string> PrepareAsync(string workspacePath, KaraokeProject project, double rate = 1,
-        CancellationToken cancellationToken = default, bool accompaniment = false)
+        CancellationToken cancellationToken = default, bool accompaniment = false, string? cover = null)
     {
         if (rate is not (0.5 or 0.75 or 1))
         {
@@ -26,7 +26,8 @@ public sealed class ProjectAudioComposer(MediaToolchain tools)
         string masterPath = WorkspacePaths.AssetPath(workspacePath, master);
         Accompaniment? alternative = accompaniment ? project.GetAccompaniment(master.Id)
             ?? throw new InvalidOperationException("当前歌曲尚未生成伴奏，请先制作伴奏。") : null;
-        if (alternative is not null) masterPath = AccompanimentStore.Resolve(workspacePath, alternative);
+        if (cover is not null) masterPath = cover;
+        else if (alternative is not null) masterPath = AccompanimentStore.Resolve(workspacePath, alternative);
         var reader = new FfprobeMediaReader(tools);
         if (!(await reader.ReadDetailsAsync(masterPath, cancellationToken).ConfigureAwait(false)).HasAudio)
         {
@@ -41,7 +42,7 @@ public sealed class ProjectAudioComposer(MediaToolchain tools)
         var assets = enabled.Select(clip => project.MediaAssets.First(asset => asset.Id == clip.MediaAssetId)).ToArray();
         var identity = new
         {
-            Master = master,
+            Master = master, Cover = cover,
             Accompaniment = alternative,
             MasterWrite = File.GetLastWriteTimeUtc(masterPath),
             Clips = enabled,

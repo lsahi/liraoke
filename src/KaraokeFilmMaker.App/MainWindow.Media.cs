@@ -32,8 +32,10 @@ public partial class MainWindow
         var project = _workspace.Project;
         RefreshAccompanimentState();
         bool accompaniment = UsePreviewAccompaniment;
+        string? cover = IsPreviewMode && _previewCover ? CoverPath : null;
         var master = project.MediaAssets.First(asset => asset.Id == masterId);
         string key = JsonSerializer.Serialize(new { Master = masterId, project.MediaAssets, project.VideoClips,
+            Cover = cover, CoverWrite = cover is null ? 0 : System.IO.File.GetLastWriteTimeUtc(cover).Ticks,
             Accompaniment = accompaniment ? project.GetAccompaniment(masterId) : null, Rate = _playbackRate });
         if (!force && key == _preparedPlaybackKey && _playback.IsLoaded)
         {
@@ -45,7 +47,7 @@ public partial class MainWindow
         if (_playback.IsPlaying) { await _playback.PauseAsync(); }
         StatusText.Text = "正在准备歌曲、视频原声和播放缓存…";
         string wave = await new ProjectAudioComposer(_mediaTools).PrepareAsync(_workspace.RootPath, project, _playbackRate,
-            _operationCancellation?.Token ?? CancellationToken.None, accompaniment: accompaniment);
+            _operationCancellation?.Token ?? CancellationToken.None, accompaniment: accompaniment, cover: cover);
         await ((ScaledAudioPlaybackSession)_playback).LoadPreparedAsync(wave, master.Duration, _playbackRate);
         await SynchronizeMetronomeAsync();
         await _playback.SeekAsync(position);
@@ -56,7 +58,7 @@ public partial class MainWindow
         VideoPreview.SpeedRatio = _playbackRate;
         string normalWave = _playbackRate == 1 ? wave
             : await new ProjectAudioComposer(_mediaTools).PrepareAsync(_workspace.RootPath, project,
-                cancellationToken: _operationCancellation?.Token ?? CancellationToken.None, accompaniment: accompaniment);
+                cancellationToken: _operationCancellation?.Token ?? CancellationToken.None, accompaniment: accompaniment, cover: cover);
         var waveform = await new WaveformCache().GetAsync(normalWave, _workspace.RootPath,
             _operationCancellation?.Token ?? CancellationToken.None);
         ProjectTimeline.Waveform = waveform;
